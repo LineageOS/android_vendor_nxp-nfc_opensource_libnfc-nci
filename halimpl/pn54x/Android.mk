@@ -20,7 +20,6 @@ endif
 
 #Enable NXP Specific
 D_CFLAGS += -DNXP_EXTNS=TRUE
-D_CFLAGS += -DJCOP_WA_ENABLE=FALSE
 
 #variables for NFC_NXP_CHIP_TYPE
 PN547C2 := 1
@@ -51,7 +50,11 @@ D_CFLAGS += -DPN553=4
 endif
 
 #### Select the CHIP ####
+ifeq ($(strip $(NQ3XX_PRESENT)),true)
+NXP_CHIP_TYPE := $(PN553)
+else
 NXP_CHIP_TYPE := $(PN548C2)
+endif
 
 ifeq ($(NXP_CHIP_TYPE),$(PN547C2))
 D_CFLAGS += -DNFC_NXP_CHIP_TYPE=PN547C2
@@ -74,6 +77,11 @@ LOCAL_MODULE := nfc_nci.nqx.default
 else ifeq ($(NXP_CHIP_TYPE),$(PN553))
 LOCAL_MODULE := nfc_nci.nqx.default
 endif
+ifeq (true,$(TARGET_IS_64_BIT))
+LOCAL_MULTILIB := 64
+else
+LOCAL_MULTILIB := 32
+endif
 LOCAL_MODULE_RELATIVE_PATH := hw
 LOCAL_SRC_FILES := $(call all-subdir-c-files)  $(call all-subdir-cpp-files)
 LOCAL_SHARED_LIBRARIES := liblog libcutils libhardware_legacy libdl
@@ -94,9 +102,19 @@ LOCAL_C_INCLUDES += \
     $(LOCAL_PATH)/self-test
 
 LOCAL_CFLAGS += -DANDROID \
-        -DNXP_UICC_ENABLE -DNXP_HW_SELF_TEST
+        -DNXP_HW_SELF_TEST
 LOCAL_CFLAGS += -DNFC_NXP_HFO_SETTINGS=FALSE
-LOCAL_CFLAGS += -DNFC_NXP_ESE=TRUE
+NFC_NXP_ESE:= TRUE
+ifeq ($(NFC_NXP_ESE),TRUE)
+D_CFLAGS += -DNFC_NXP_ESE=TRUE
+ifeq ($(NXP_CHIP_TYPE),$(PN553))
+D_CFLAGS += -DJCOP_WA_ENABLE=FALSE
+else
+D_CFLAGS += -DJCOP_WA_ENABLE=TRUE
+endif
+else
+D_CFLAGS += -DNFC_NXP_ESE=FALSE
+endif
 LOCAL_CFLAGS += $(D_CFLAGS)
 #LOCAL_CFLAGS += -DFELICA_CLT_ENABLE
 #-DNXP_PN547C1_DOWNLOAD
@@ -115,7 +133,11 @@ LOCAL_MODULE       := libnfc-nxp.conf
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH  := $(TARGET_OUT_ETC)
+ifeq ($(strip $(NQ3XX_PRESENT)),true)
+LOCAL_SRC_FILES    := libnfc-nxp-PN80T_example.conf
+else
 LOCAL_SRC_FILES    := libnfc-nxp-PN66T_example.conf
+endif
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
@@ -123,5 +145,10 @@ LOCAL_MODULE       := libnfc-nxp_default.conf
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH  := $(TARGET_OUT_ETC)
+
+ifeq ($(strip $(NQ3XX_PRESENT)),true)
+LOCAL_SRC_FILES    := libnfc-nxp-PN80T_example.conf
+else
 LOCAL_SRC_FILES    := libnfc-nxp-PN66T_example.conf
+endif
 include $(BUILD_PREBUILT)
