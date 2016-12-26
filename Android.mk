@@ -57,11 +57,7 @@ LOCAL_CFLAGS += -DNFC_NXP_ESE=FALSE
 endif
 
 #### Select the CHIP ####
-ifeq ($(strip $(NQ3XX_PRESENT)),true)
-NXP_CHIP_TYPE := $(PN553)
-else
 NXP_CHIP_TYPE := $(PN548C2)
-endif
 
 ifeq ($(NXP_CHIP_TYPE),$(PN547C2))
 D_CFLAGS += -DNFC_NXP_CHIP_TYPE=PN547C2

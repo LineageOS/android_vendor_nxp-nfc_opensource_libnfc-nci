@@ -50,11 +50,7 @@ D_CFLAGS += -DPN553=4
 endif
 
 #### Select the CHIP ####
-ifeq ($(strip $(NQ3XX_PRESENT)),true)
-NXP_CHIP_TYPE := $(PN553)
-else
 NXP_CHIP_TYPE := $(PN548C2)
-endif
 
 ifeq ($(NXP_CHIP_TYPE),$(PN547C2))
 D_CFLAGS += -DNFC_NXP_CHIP_TYPE=PN547C2
@@ -133,11 +129,7 @@ LOCAL_MODULE       := libnfc-nxp.conf
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH  := $(TARGET_OUT_ETC)
-ifeq ($(strip $(NQ3XX_PRESENT)),true)
-LOCAL_SRC_FILES    := libnfc-nxp-PN80T_example.conf
-else
 LOCAL_SRC_FILES    := libnfc-nxp-PN66T_example.conf
-endif
 include $(BUILD_PREBUILT)
 
 include $(CLEAR_VARS)
@@ -145,10 +137,5 @@ LOCAL_MODULE       := libnfc-nxp_default.conf
 LOCAL_MODULE_TAGS  := optional
 LOCAL_MODULE_CLASS := ETC
 LOCAL_MODULE_PATH  := $(TARGET_OUT_ETC)
-
-ifeq ($(strip $(NQ3XX_PRESENT)),true)
-LOCAL_SRC_FILES    := libnfc-nxp-PN80T_example.conf
-else
 LOCAL_SRC_FILES    := libnfc-nxp-PN66T_example.conf
-endif
 include $(BUILD_PREBUILT)
