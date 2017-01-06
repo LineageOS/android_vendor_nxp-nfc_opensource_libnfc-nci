@@ -26,7 +26,7 @@
 #include <phNxpConfig.h>
 #include <phDnldNfc.h>
 
-#define HAL_EXTNS_WRITE_RSP_TIMEOUT   (1000)                /* Timeout value to wait for response from PN548AD */
+#define HAL_EXTNS_WRITE_RSP_TIMEOUT   (2500)                /* Timeout value to wait for response from PN548AD */
 
 #undef P2P_PRIO_LOGIC_HAL_IMP
 
@@ -64,7 +64,7 @@ static uint32_t bCoreRstNtf[40];
 static uint32_t iCoreRstNtfLen;
 
 extern uint32_t timeoutTimerId;
-#if ((NFC_NXP_CHIP_TYPE == PN548C2) || (NFC_NXP_CHIP_TYPE == PN551))
+#if(NXP_ESE_SVDD_SYNC == TRUE)
 extern uint32_t gSvddSyncOff_Delay; /*default delay*/
 #endif
 extern NFCSTATUS read_retry();
@@ -473,6 +473,19 @@ NFCSTATUS phNxpNciHal_process_ext_rsp (uint8_t *p_ntf, uint16_t *p_len)
                 }
             }
         }
+        else if(p_ntf[len-2] == 0x11) //for FW = 11.xx.xx
+        {
+           NXPLOG_NCIHAL_D ("NxpNci> Model ID: %x", p_ntf[len-3]>>4);
+           switch(p_ntf[len-3])
+           {
+                case 0x40:
+                    NXPLOG_NCIHAL_D ("NxpNci> Product: NQ310/PN5xx");
+                    break;
+                case 0x51:
+                    NXPLOG_NCIHAL_D ("NxpNci> Product: NQ330/PN5xx+eSE");
+                    break;
+           }
+        }
         else
         {
             /* Do Nothing */
@@ -740,7 +753,7 @@ NFCSTATUS phNxpNciHal_write_ext(uint16_t *cmd_len, uint8_t *p_cmd_data,
         nxpprofile_ctrl.profile_type = NFC_FORUM_PROFILE;
         status = NFCSTATUS_SUCCESS;
     }
-#if ((NFC_NXP_CHIP_TYPE == PN548C2) || (NFC_NXP_CHIP_TYPE == PN551))
+#if(NXP_ESE_SVDD_SYNC == TRUE)
     else if (p_cmd_data[0] == 0x2F &&
             p_cmd_data[1] == 0x31 &&
             p_cmd_data[2] == 0x01 &&
@@ -861,7 +874,6 @@ NFCSTATUS phNxpNciHal_write_ext(uint16_t *cmd_len, uint8_t *p_cmd_data,
         p_rsp_data[2] = 0x02;
         p_rsp_data[3] = 0x00;
         p_rsp_data[4] = 0x00;
-        phNxpNciHal_print_packet("RECV", p_rsp_data,5);
         status = NFCSTATUS_FAILED;
     }
     //2002 0904 3000 3100 3200 5000
@@ -1219,16 +1231,19 @@ NFCSTATUS request_EEPROM(phNxpNci_EEPROM_info_t *mEEPROM_info)
     case EEPROM_WIREDMODE_RESUME_ENABLE:
         b_position = 0;
         memIndex = 0x00;
-        addr[0]  = 0xFF; //To be updated actual value
-        addr[1]  = 0xFF; // To be updated actual value
+        addr[0]  = 0xA0; //To be updated actual value
+        addr[1]  = 0x99; // To be updated actual value
         break;
-    
+
     case EEPROM_WIREDMODE_RESUME_TIMEOUT:
-        b_position = 0;
+        mEEPROM_info->update_mode = BYTEWISE;
         memIndex = 0x00;
-        addr[0]  = 0xFF; //To be updated actual value
-        addr[1]  = 0xFF; // To be updated actual value
+        fieldLen = 0x04;
+        len = fieldLen + 4;
+        addr[0]  = 0xA0;
+        addr[1]  = 0xFC;
         break;
+
     case EEPROM_ESE_SVDD_POWER:
         b_position = 0;
         memIndex = 0x00;

@@ -25,6 +25,8 @@
 #include <pthread.h>
 #include <phOsalNfc_Timer.h>
 #include <phNxpConfig.h>
+#include <NXP_NFCC_Features.h>
+#include <NXP_Platform_Features.h>
 
 #define HAL_WRITE_RSP_TIMEOUT   (2000)   /* Timeout value to wait for response from PN54X */
 #define HAL_WRITE_MAX_RETRY     (10)
@@ -639,6 +641,7 @@ static nci_test_data_t antenna_self_test_data[] = {
         st_validator_testAntenna_AgcVal_FixedNfcLd,
         st_validator_null
     },
+#if(NXP_HW_ANTENNA_LOOP4_SELF_TEST==TRUE)
     {
         {
             0x07, {0x2F, 0x3D, 0x04, 0x08, 0x8C, 0x60, 0x03} /* AGC with NFCLD measurement cmd */
@@ -651,8 +654,8 @@ static nci_test_data_t antenna_self_test_data[] = {
         },
         st_validator_testAntenna_AgcVal_Differential,
         st_validator_null
-#if(NFC_NXP_CHIP_TYPE != PN547C2)
     },
+#endif
     {
         {
             0x04, {0x2F,0x00,0x01,0x01} /* cmd */
@@ -665,7 +668,6 @@ static nci_test_data_t antenna_self_test_data[] = {
         },
         st_validator_testEquals, /* validator */
         st_validator_null
-#endif
     }
 };
 
@@ -2010,7 +2012,11 @@ NFCSTATUS phNxpNciHal_AntennaSelfTest(phAntenna_St_Resp_t * phAntenna_St_Resp )
     if(status == NFCSTATUS_SUCCESS)
     {
         if((gtxldo_status == NFCSTATUS_SUCCESS) && (gagc_value_status == NFCSTATUS_SUCCESS) &&
-           (gagc_nfcld_status == NFCSTATUS_SUCCESS) && (gagc_differential_status == NFCSTATUS_SUCCESS))
+           (gagc_nfcld_status == NFCSTATUS_SUCCESS)
+#if(NXP_HW_ANTENNA_LOOP4_SELF_TEST==TRUE)
+           && (gagc_differential_status == NFCSTATUS_SUCCESS)
+#endif
+          )
         {
             antenna_st_status = NFCSTATUS_SUCCESS;
             NXPLOG_NCIHAL_D("phNxpNciHal_AntennaSelfTest - SUCESS\n");
