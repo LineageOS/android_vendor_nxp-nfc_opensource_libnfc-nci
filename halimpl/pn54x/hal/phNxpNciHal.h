@@ -22,11 +22,16 @@
 #include <hardware/nfc.h>
 #include <phNxpNciHal_utils.h>
 #include <NXP_ESE_Features.h>
+#ifndef NXP_NFCC_FEATURES_H
+#include <NXP_NFCC_Features.h>
+#endif
 
 /********************* Definitions and structures *****************************/
 #define MAX_RETRY_COUNT       5
 #define NCI_MAX_DATA_LEN      300
 #define NCI_POLL_DURATION     500
+#define NXP_STAG_TIMEOUT_BUF_LEN                0x04 /*FIXME:TODO:remove*/
+#define NXP_WIREDMODE_RESUME_TIMEOUT_LEN        0x04
 #undef P2P_PRIO_LOGIC_HAL_IMP
 
 typedef struct
@@ -57,8 +62,10 @@ enum {
     HAL_NFC_IOCTL_NCI_TRANSCEIVE,
     HAL_NFC_IOCTL_P61_GET_ACCESS,
     HAL_NFC_IOCTL_P61_REL_ACCESS,
-    HAL_NFC_IOCTL_P73_ISO_RST,
-    HAL_NFC_IOCTL_REL_SVDD_WAIT
+    HAL_NFC_IOCTL_ESE_CHIP_RST,
+    HAL_NFC_IOCTL_REL_SVDD_WAIT,
+    HAL_NFC_IOCTL_SET_JCP_DWNLD_ENABLE,
+    HAL_NFC_IOCTL_SET_JCP_DWNLD_DISABLE
 };
 
 typedef void (phNxpNciHal_control_granted_callback_t)();
