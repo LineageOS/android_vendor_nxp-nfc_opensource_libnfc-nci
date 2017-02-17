@@ -35,7 +35,7 @@ typedef struct
 
     /* Local definitions */
     int (*ioctl)(const struct nfc_nci_device *p_dev, long arg, void *p_data);
-
+    int(*check_fw_dwnld_flag)(const struct nfc_nci_device *p_dev, uint8_t* param1);
 } pn547_dev_t;
 
 /* NXP HAL functions */
@@ -52,4 +52,5 @@ int phNxpNciHal_power_cycle(void);
 int phNxpNciHal_MinOpen(nfc_stack_callback_t *p_cback,
         nfc_stack_data_callback_t *p_data_cback);
 int phNxpNciHal_Minclose(void);
+int phNxpNciHal_getFWDownloadFlag(uint8_t* fwDnldRequest);
 #endif /* _PHNXPNCIHAL_ADAPTATION_H_ */
