@@ -36,7 +36,9 @@ long nfc_service_pid;
  */
 #define PHTMLNFC_MAXTIME_RETRANSMIT (200U)
 #define MAX_WRITE_RETRY_COUNT 0x03
-#define MAX_READ_RETRY_COUNT 0x05
+#if (NXP_NFCC_I2C_READ_WRITE_IMPROVEMENT == TRUE)
+#define MAX_READ_RETRY_COUNT  0x05
+#endif
 /* Retry Count = Standby Recovery time of NFCC / Retransmission time + 1 */
 static uint8_t bCurrentRetryCount = (2000 / PHTMLNFC_MAXTIME_RETRANSMIT) + 1;
 
@@ -351,7 +353,10 @@ static void phTmlNfc_TmlThread(void *pParam)
     int32_t dwNoBytesWrRd = PH_TMLNFC_RESET_VALUE;
     const size_t BUFF_SIZE = 260;
     uint8_t temp[BUFF_SIZE];
+#if (NXP_NFCC_I2C_READ_WRITE_IMPROVEMENT == TRUE)
     static uint8_t read_count = 0;
+#endif
+
     /* Transaction info buffer to be passed to Callback Thread */
     static phTmlNfc_TransactInfo_t tTransactionInfo;
     /* Structure containing Tml callback function and parameters to be invoked
@@ -389,6 +394,7 @@ static void phTmlNfc_TmlThread(void *pParam)
                 if (-1 == dwNoBytesWrRd)
                 {
                     NXPLOG_TML_E("PN54X - Error in I2C Read.....\n");
+#if (NXP_NFCC_I2C_READ_WRITE_IMPROVEMENT == TRUE)
                     if(read_count <= MAX_READ_RETRY_COUNT)
                     {
                         read_count++;
@@ -414,12 +420,15 @@ static void phTmlNfc_TmlThread(void *pParam)
                         phTmlNfc_DeferredCall(gpphTmlNfc_Context->dwCallbackThreadId, &tMsg);
                         return;
                     }
+#endif
                     sem_post(&gpphTmlNfc_Context->rxSemaphore);
                 }
                 else if(dwNoBytesWrRd > (int32_t) BUFF_SIZE)
                 {
                     NXPLOG_TML_E("Numer of bytes read exceeds the limit 260.....\n");
+#if (NXP_NFCC_I2C_READ_WRITE_IMPROVEMENT == TRUE)
                     read_count = 0;
+#endif
                     sem_post(&gpphTmlNfc_Context->rxSemaphore);
                 }
                 else
@@ -691,7 +700,18 @@ static void phTmlNfc_CleanUp(void)
 NFCSTATUS phTmlNfc_Shutdown(void)
 {
     NFCSTATUS wShutdownStatus = NFCSTATUS_SUCCESS;
+#if(NFC_NXP_ESE == TRUE)
+    nfc_service_pid = 0;
 
+    if(!phTmlNfc_IoCtl(phTmlNfc_e_SetNfcServicePid))
+    {
+       NXPLOG_TML_D("nfc service reset pid done");
+    }
+    else
+    {
+       NXPLOG_TML_D("nfc service reset pid failed");
+    }
+#endif
     /* Check whether TML is Initialized */
     if (NULL != gpphTmlNfc_Context)
     {
@@ -963,26 +983,45 @@ NFCSTATUS phTmlNfc_IoCtl(phTmlNfc_ControlCode_t eControlCode)
                 {
                     /*Block reader thread until VEN Toggling is completed*/
                     /*Reset PN54X*/
+                    uint8_t read_flag = FALSE;
+                    if (gpphTmlNfc_Context->tReadInfo.bEnable)
+                    {
+                        gpphTmlNfc_Context->tReadInfo.bEnable = 0;
+                        read_flag = TRUE;
+                    }
                     gpphTmlNfc_Context->tReadInfo.bEnable = 0;
                     phTmlNfc_i2c_reset(gpphTmlNfc_Context->pDevHandle, 0);
                     usleep(10 * 1000);
                     phTmlNfc_i2c_reset(gpphTmlNfc_Context->pDevHandle, 1);
                     usleep(100 * 1000);
-                    gpphTmlNfc_Context->tReadInfo.bEnable = 1;
-                    sem_post(&gpphTmlNfc_Context->rxSemaphore);
+                    if (read_flag)
+                    {
+                        gpphTmlNfc_Context->tReadInfo.bEnable = 1;
+                        sem_post(&gpphTmlNfc_Context->rxSemaphore);
+                    }
                     break;
                 }
             case phTmlNfc_e_EnableDownloadMode:
                 {
                     phTmlNfc_ConfigNciPktReTx(phTmlNfc_e_DisableRetrans, 0);
                     gpphTmlNfc_Context->tReadInfo.bEnable = 0;
-                    (void)phTmlNfc_i2c_reset(gpphTmlNfc_Context->pDevHandle,2);
+                    wStatus = phTmlNfc_i2c_reset(gpphTmlNfc_Context->pDevHandle,2);
                     usleep(100 * 1000);
                     gpphTmlNfc_Context->tReadInfo.bEnable = 1;
                     sem_post(&gpphTmlNfc_Context->rxSemaphore);
                     break;
                 }
 #if(NFC_NXP_ESE == TRUE)
+            case phTmlNfc_e_SetJcopDwnldEnable:
+                {
+                    wStatus = phTmlNfc_i2c_set_Jcop_dwnld_state(gpphTmlNfc_Context->pDevHandle, 2);
+                    break;
+                }
+            case phTmlNfc_e_SetJcopDwnldDisable:
+                {
+                    wStatus = phTmlNfc_i2c_set_Jcop_dwnld_state(gpphTmlNfc_Context->pDevHandle, 4);
+                    break;
+                }
             case phTmlNfc_e_SetNfcServicePid:
             {
                 wStatus = phTmlNfc_set_pid(gpphTmlNfc_Context->pDevHandle, nfc_service_pid);
@@ -1018,7 +1057,7 @@ NFCSTATUS phTmlNfc_IoCtl(phTmlNfc_ControlCode_t eControlCode)
                 wStatus = phTmlNfc_i2c_set_p61_power_state(gpphTmlNfc_Context->pDevHandle, 4);
                 break;
             }
-            case phTmlNfc_e_P73IsoRstMode:
+            case phTmlNfc_e_eSEChipRstMode:
             {
                 wStatus = phTmlNfc_i2c_reset(gpphTmlNfc_Context->pDevHandle, 3);
                 break;

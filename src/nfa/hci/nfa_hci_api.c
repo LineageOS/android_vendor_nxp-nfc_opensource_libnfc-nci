@@ -1045,7 +1045,6 @@ BOOLEAN NFA_MW_Fwdnlwd_Recovery(BOOLEAN mw_fwdnld_recovery)
 }
 #endif
 #if(NXP_EXTNS == TRUE)
-#if (JCOP_WA_ENABLE == TRUE)
 /*******************************************************************************
 **
 ** Function         NFA_HciW4eSETransaction_Complete
@@ -1080,7 +1079,6 @@ void NFA_HciW4eSETransaction_Complete(tNFA_HCI_TRANSCV_STATE type)
     }
     NFA_TRACE_API0 ("NFA_HciW4eSETransaction_Complete; End");
 }
-#endif
 
 /*******************************************************************************
 **

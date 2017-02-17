@@ -1034,7 +1034,6 @@ void nfa_ee_api_remove_aid(tNFA_EE_MSG *p_data)
         memset(&p_ecb->aid_pwr_cfg[0], 0x00, max_aid_entries);
         memset(&p_ecb->aid_rt_info[0], 0x00, max_aid_entries);
 #else
-        memset(&p_cb->aid_cfg[0],0x00, NFA_EE_MAX_AID_CFG_LEN);
         memset(&p_ecb->aid_len[0], 0x00, NFA_EE_MAX_AID_ENTRIES);
         memset(&p_ecb->aid_pwr_cfg[0], 0x00, NFA_EE_MAX_AID_ENTRIES);
         memset(&p_ecb->aid_rt_info[0], 0x00, NFA_EE_MAX_AID_ENTRIES);
@@ -2337,19 +2336,19 @@ tNFA_STATUS nfa_ee_route_add_one_ecb(tNFA_EE_ECB *p_cb, int *p_max_len, BOOLEAN 
     UINT8   new_size;
     tNFA_STATUS status = NFA_STATUS_OK;
 #if(NXP_NFCC_ROUTING_BLOCK_BIT==TRUE)
-    UINT8 value=0x00;
+    UINT8 route_blacklist_mask=0x00;
     long retlen = 0;
-    NFA_TRACE_DEBUG1 ("NAME_NXP_PROP_BLACKLIST_ROUTING enter=0x%x",value);
+    NFA_TRACE_DEBUG1 ("NAME_NXP_PROP_BLACKLIST_ROUTING enter=0x%x",route_blacklist_mask);
     if(GetNumValue(NAME_NXP_PROP_BLACKLIST_ROUTING, (void *)&retlen, sizeof(retlen)))
     {
         if(retlen == 0x01)
         {
-            value =NFA_EE_NXP_ROUTE_BLOCK_BIT;
-            NFA_TRACE_DEBUG1 ("NAME_NXP_PROP_BLACKLIST_ROUTING change=0x%x",value);
+            route_blacklist_mask =NFA_EE_NXP_ROUTE_BLOCK_BIT;
+            NFA_TRACE_DEBUG1 ("NAME_NXP_PROP_BLACKLIST_ROUTING change=0x%x",route_blacklist_mask);
          }
         else
         {
-            NFA_TRACE_DEBUG1 ("NAME_NXP_PROP_BLACKLIST_ROUTING exit=0x%x",value);
+            NFA_TRACE_DEBUG1 ("NAME_NXP_PROP_BLACKLIST_ROUTING exit=0x%x",route_blacklist_mask);
         }
     }
 #endif
@@ -2383,13 +2382,13 @@ tNFA_STATUS nfa_ee_route_add_one_ecb(tNFA_EE_ECB *p_cb, int *p_max_len, BOOLEAN 
                     //This aid is for prefix match.
                     *pp   = NFC_ROUTE_TAG_AID|NFA_EE_AE_NXP_PREFIX_MATCH;
 #if(NXP_NFCC_ROUTING_BLOCK_BIT==TRUE)
-                    *pp  |= (NFA_EE_NXP_ROUTE_BLOCK_BIT & value)?NFA_EE_NXP_ROUTE_BLOCK_BIT:0x00;
+                    *pp  |= route_blacklist_mask;
 #endif
                 } else {
                     //This aid is for exact match.
                     *pp   = NFC_ROUTE_TAG_AID;
 #if(NXP_NFCC_ROUTING_BLOCK_BIT==TRUE)
-                    *pp  |= (NFA_EE_NXP_ROUTE_BLOCK_BIT & value)?NFA_EE_NXP_ROUTE_BLOCK_BIT:0x00;
+                    *pp  |= route_blacklist_mask;
 #endif
                 }
                 *pp++;
@@ -2457,7 +2456,7 @@ tNFA_STATUS nfa_ee_route_add_one_ecb(tNFA_EE_ECB *p_cb, int *p_max_len, BOOLEAN 
             /*Setting blocking bit for ISO-DEP and ISO7816 protocol only*/
             if(nfa_ee_proto_list[xx]==NFC_PROTOCOL_ISO_DEP || nfa_ee_proto_list[xx] == NFC_PROTOCOL_ISO7816)
             {
-                *proto_pp  |= (NFA_EE_NXP_ROUTE_BLOCK_BIT & value)?NFA_EE_NXP_ROUTE_BLOCK_BIT:0x00;
+                *proto_pp  |= route_blacklist_mask;
             }
 #endif
             *proto_pp++;
@@ -2591,7 +2590,7 @@ for (xx = 0; xx < NFA_EE_NUM_TECH; xx++)
             /*Setting blocking bit for ISO-DEP and ISO7816 protocol only*/
             if(nfa_ee_proto_list[xx]==NFC_PROTOCOL_ISO_DEP || nfa_ee_proto_list[xx] == NFC_PROTOCOL_ISO7816)
             {
-                *pp  |= (NFA_EE_NXP_ROUTE_BLOCK_BIT & value)?NFA_EE_NXP_ROUTE_BLOCK_BIT:0x00;
+                *pp  |= route_blacklist_mask;
             }
 #endif
             *pp++;
@@ -2654,12 +2653,12 @@ for (xx = 0; xx < NFA_EE_NUM_TECH; xx++)
                 if(p_cb->aid_rt_info[xx] & NFA_EE_AE_NXP_PREFIX_MATCH) {
 #if(NXP_NFCC_ROUTING_BLOCK_BIT==FALSE)
                     //This aid is for prefix match.
-                    *pp++   = (NFC_ROUTE_TAG_AID|NFA_EE_AE_NXP_PREFIX_MATCH)|((NFA_EE_NXP_ROUTE_BLOCK_BIT & value)?NFA_EE_NXP_ROUTE_BLOCK_BIT:0x00);
+                    *pp++   = (NFC_ROUTE_TAG_AID|NFA_EE_AE_NXP_PREFIX_MATCH)|(route_blacklist_mask);
 #endif
                 } else {
 #if(NXP_NFCC_ROUTING_BLOCK_BIT==FALSE)
                     //This aid is for exact match.
-                    *pp++   = NFC_ROUTE_TAG_AID|((NFA_EE_NXP_ROUTE_BLOCK_BIT & value)?NFA_EE_NXP_ROUTE_BLOCK_BIT:0x00);
+                    *pp++   = NFC_ROUTE_TAG_AID|(route_blacklist_mask);
 #endif
                 }
 #else
@@ -2897,7 +2896,7 @@ void nfa_ee_rout_timeout(tNFA_EE_MSG *p_data)
 void nfa_ee_discv_timeout(tNFA_EE_MSG *p_data)
 {
     (void)p_data;
-
+    NFA_TRACE_DEBUG0("nfa_ee_discv_timeout ()");
     NFC_NfceeDiscover(FALSE);
     if (nfa_ee_cb.p_enable_cback)
         (*nfa_ee_cb.p_enable_cback)(NFA_EE_DISC_STS_OFF);
