@@ -1809,7 +1809,7 @@ retry_core_init:
         phNxpNci_EEPROM_info_t swp_intf_info;
 
         memset(swp_info_buff,0,sizeof(swp_info_buff));
-        //Read SWP1 data
+        /*Read SWP1 data*/
         memset(&swp_intf_info,0,sizeof(swp_intf_info));
         swp_intf_info.request_mode = GET_EEPROM_DATA;
         swp_intf_info.request_type = EEPROM_SWP1_INTF;
@@ -1818,8 +1818,8 @@ retry_core_init:
         status = request_EEPROM(&swp_intf_info);
         if(status == NFCSTATUS_OK)
             swp_info_buff[0] = swp_intf_status;
-
-        //Read SWP1A data
+#if (NFC_NXP_STAT_DUAL_UICC_WO_EXT_SWITCH == TRUE)
+        /*Read SWP1A data*/
         memset(&swp_intf_info,0,sizeof(swp_intf_info));
         swp_intf_info.request_mode = GET_EEPROM_DATA;
         swp_intf_info.request_type = EEPROM_SWP1A_INTF;
@@ -1828,7 +1828,7 @@ retry_core_init:
         status = request_EEPROM(&swp_intf_info);
         if(status == NFCSTATUS_OK)
             swp_info_buff[1] = swp1A_intf_status;
-
+#endif
         phNxpNci_EEPROM_info_t mEEPROM_info = {0};
         mEEPROM_info.buffer = swp_info_buff;
         mEEPROM_info.bufflen= sizeof(swp_info_buff);
@@ -1836,9 +1836,9 @@ retry_core_init:
         mEEPROM_info.request_mode = SET_EEPROM_DATA;
         status = request_EEPROM(&mEEPROM_info);
         NXPLOG_NCIHAL_D ("Setting value %d %d",swp_info_buff[1],swp_info_buff[0]);
-        retlen = 0;
 
         NXPLOG_NCIHAL_D ("Performing NAME_NXP_CORE_CONF Settings");
+        retlen = 0;
         isfound =  GetNxpByteArrayValue(NAME_NXP_CORE_CONF,(char *)buffer,bufflen,&retlen);
         if(retlen > 0)
         {
@@ -1851,8 +1851,8 @@ retry_core_init:
                 goto retry_core_init;
             }
         }
-        retlen = 0;
 
+        retlen = 0;
         isfound = GetNxpByteArrayValue(NAME_NXP_CORE_MFCKEY_SETTING,
                 (char *) buffer, bufflen, &retlen);
         if (retlen > 0) {
