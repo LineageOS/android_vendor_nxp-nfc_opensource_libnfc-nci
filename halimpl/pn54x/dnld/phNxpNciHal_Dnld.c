@@ -20,7 +20,6 @@
 #include <phNxpNciHal_utils.h>
 #include <phNxpLog.h>
 #include <phNxpConfig.h>
-#include <cutils/properties.h>
 
 /* Macro */
 #define PHLIBNFC_IOCTL_DNLD_MAX_ATTEMPTS 3
@@ -552,8 +551,6 @@ static void phNxpNciHal_fw_dnld_get_version_cb(void* pContext,
     uint8_t bExpectedLen = 0;
     uint8_t bNewVer[2];
     uint8_t bCurrVer[2];
-    int rc;
-    char nq_chipid[PROPERTY_VALUE_MAX] = {0};
 
     if ((NFCSTATUS_SUCCESS == wStatus) && (NULL != pInfo))
     {
@@ -566,30 +563,24 @@ static void phNxpNciHal_fw_dnld_get_version_cb(void* pContext,
             bHwVer = (pRespBuff->pBuff[0]);
             bHwVer &= 0x0F; /* 0x0F is the mask to extract chip version */
 
-            rc = __system_property_get("sys.nfc.nq.chipid", nq_chipid);
-            if (rc <= 0)
-                ALOGE("get sys.nfc.nq.chipid fail, rc = %d\n", rc);
-            else
-                ALOGD("sys.nfc.nq.chipid = %s\n", nq_chipid);
             if ((PHDNLDNFC_HWVER_MRA2_1 == bHwVer) || (PHDNLDNFC_HWVER_MRA2_2 == bHwVer)
 #if(NFC_NXP_CHIP_TYPE == PN551)
               || (PHDNLDNFC_HWVER_PN551_MRA1_0 == bHwVer)|| (PHDNLDNFC_HWVER_PN553_MRA1_0 == bHwVer)
-#else
-              || (((!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX)))
-              && (PHDNLDNFC_HWVER_PN548AD_MRA1_0 == bHwVer))
-              || (PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
+#elif(NFC_NXP_CHIP_TYPE == PN548C2)
+              || (PHDNLDNFC_HWVER_PN548AD_MRA1_0 == bHwVer)
+#elif(NFC_NXP_CHIP_TYPE == PN553)
+              || (PHDNLDNFC_HWVER_PN553_MRA1_0 == bHwVer || PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
 #endif
                 )
             {
                 bExpectedLen = PHLIBNFC_IOCTL_DNLD_GETVERLEN_MRA2_1;
                 (gphNxpNciHal_fw_IoctlCtx.bChipVer) = bHwVer;
-                if ((strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) && (strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX)))
+#if(NFC_NXP_CHIP_TYPE == PN553)
+                if(PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
                 {
-                    if (PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
-                    {
-                        (gphNxpNciHal_fw_IoctlCtx.bChipVer) = pRespBuff->pBuff[0];
-                    }
+                    (gphNxpNciHal_fw_IoctlCtx.bChipVer) = pRespBuff->pBuff[0];
                 }
+#endif
 
             }
             else if ((bHwVer >= PHDNLDNFC_HWVER_MRA1_0) && (bHwVer
