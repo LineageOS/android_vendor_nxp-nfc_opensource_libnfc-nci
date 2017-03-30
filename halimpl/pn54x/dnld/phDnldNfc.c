@@ -28,6 +28,7 @@
 #include <phNxpLog.h>
 #include <dlfcn.h>
 #include <phNxpConfig.h>
+#include <cutils/properties.h>
 
 static void *pFwLibHandle; /* Global firmware lib handle used in this file only */
 uint16_t wMwVer = 0; /* Middleware version no */
@@ -269,6 +270,8 @@ NFCSTATUS phDnldNfc_GetSessionState(pphDnldNfc_Buff_t pSession, pphDnldNfc_RspCb
 NFCSTATUS phDnldNfc_CheckIntegrity(uint8_t bChipVer, pphDnldNfc_Buff_t pCRCData, pphDnldNfc_RspCb_t pNotify, void *pContext)
 {
     NFCSTATUS   wStatus = NFCSTATUS_SUCCESS;
+    int rc;
+    char nq_chipid[PROPERTY_VALUE_MAX] = {0};
 
     if((NULL == pNotify) ||
        (NULL == pContext)
@@ -286,13 +289,18 @@ NFCSTATUS phDnldNfc_CheckIntegrity(uint8_t bChipVer, pphDnldNfc_Buff_t pCRCData,
         }
         else
         {
+            rc = __system_property_get("sys.nfc.nq.chipid", nq_chipid);
+            if (rc <= 0)
+                ALOGE("get sys.nfc.nq.chipid fail, rc = %d\n", rc);
+            else
+                ALOGD("sys.nfc.nq.chipid = %s\n", nq_chipid);
             if((PHDNLDNFC_HWVER_MRA2_1 == bChipVer) || (PHDNLDNFC_HWVER_MRA2_2 == bChipVer)
 #if(NFC_NXP_CHIP_TYPE == PN551)
               || (PHDNLDNFC_HWVER_PN551_MRA1_0 == bChipVer)  || (PHDNLDNFC_HWVER_PN553_MRA1_0 == bChipVer)
-#elif(NFC_NXP_CHIP_TYPE == PN548C2)
-              || (PHDNLDNFC_HWVER_PN548AD_MRA1_0 == bChipVer)
-#elif(NFC_NXP_CHIP_TYPE == PN553)
-              || (PHDNLDNFC_HWVER_PN553_MRA1_0 == bChipVer) || (PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & bChipVer)
+#else
+              || (((!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX)))
+              && (PHDNLDNFC_HWVER_PN548AD_MRA1_0 == bChipVer))
+              || (PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & bChipVer)
 #endif
                 )
             {
@@ -886,7 +894,7 @@ NFCSTATUS phDnldNfc_InitImgInfo(void)
     phDnldNfc_SetHwDevHandle();
 
     /*Read Firmware file name from config file*/
-    if(GetNxpStrValue(NAME_NXP_FW_NAME, (char *)fwFileName, sizeof(fwFileName)) == TRUE)
+    if(GetNxpStrValue(NAME_NXP_FW_NAME, (char *)fwFileName, sizeof(fwFileName)))
     {
         strlcpy(fwpathName, FW_DLL_ROOT_DIR, sizeof(fwpathName));
         strlcat(fwpathName, fwFileName, sizeof(fwpathName));
@@ -898,6 +906,7 @@ NFCSTATUS phDnldNfc_InitImgInfo(void)
     if(gRecFWDwnld == TRUE)
         wStatus = phDnldNfc_LoadRecoveryFW(pathName, &pImageInfo, &ImageInfoLen);
     else
+        /* else condition */
 #endif
         wStatus = phDnldNfc_LoadFW(pathName, &pImageInfo, &ImageInfoLen);
 
@@ -912,7 +921,7 @@ NFCSTATUS phDnldNfc_InitImgInfo(void)
 
     if (wStatus != NFCSTATUS_SUCCESS)
     {
-        NXPLOG_FWDNLD_E("Error loading libpn54x_fw !!\n");
+        NXPLOG_FWDNLD_E("Error loading libpn5xx_fw.so !!!\n");
     }
 
    /* get the MW version */

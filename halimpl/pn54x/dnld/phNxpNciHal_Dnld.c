@@ -20,6 +20,7 @@
 #include <phNxpNciHal_utils.h>
 #include <phNxpLog.h>
 #include <phNxpConfig.h>
+#include <cutils/properties.h>
 
 /* Macro */
 #define PHLIBNFC_IOCTL_DNLD_MAX_ATTEMPTS 3
@@ -551,6 +552,8 @@ static void phNxpNciHal_fw_dnld_get_version_cb(void* pContext,
     uint8_t bExpectedLen = 0;
     uint8_t bNewVer[2];
     uint8_t bCurrVer[2];
+    int rc;
+    char nq_chipid[PROPERTY_VALUE_MAX] = {0};
 
     if ((NFCSTATUS_SUCCESS == wStatus) && (NULL != pInfo))
     {
@@ -563,24 +566,30 @@ static void phNxpNciHal_fw_dnld_get_version_cb(void* pContext,
             bHwVer = (pRespBuff->pBuff[0]);
             bHwVer &= 0x0F; /* 0x0F is the mask to extract chip version */
 
+            rc = __system_property_get("sys.nfc.nq.chipid", nq_chipid);
+            if (rc <= 0)
+                ALOGE("get sys.nfc.nq.chipid fail, rc = %d\n", rc);
+            else
+                ALOGD("sys.nfc.nq.chipid = %s\n", nq_chipid);
             if ((PHDNLDNFC_HWVER_MRA2_1 == bHwVer) || (PHDNLDNFC_HWVER_MRA2_2 == bHwVer)
 #if(NFC_NXP_CHIP_TYPE == PN551)
               || (PHDNLDNFC_HWVER_PN551_MRA1_0 == bHwVer)|| (PHDNLDNFC_HWVER_PN553_MRA1_0 == bHwVer)
-#elif(NFC_NXP_CHIP_TYPE == PN548C2)
-              || (PHDNLDNFC_HWVER_PN548AD_MRA1_0 == bHwVer)
-#elif(NFC_NXP_CHIP_TYPE == PN553)
-              || (PHDNLDNFC_HWVER_PN553_MRA1_0 == bHwVer || PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
+#else
+              || (((!strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) || (!strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX)))
+              && (PHDNLDNFC_HWVER_PN548AD_MRA1_0 == bHwVer))
+              || (PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
 #endif
                 )
             {
                 bExpectedLen = PHLIBNFC_IOCTL_DNLD_GETVERLEN_MRA2_1;
                 (gphNxpNciHal_fw_IoctlCtx.bChipVer) = bHwVer;
-#if(NFC_NXP_CHIP_TYPE == PN553)
-                if(PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
+                if ((strncmp(nq_chipid, NQ220, PROPERTY_VALUE_MAX)) && (strncmp(nq_chipid, NQ210, PROPERTY_VALUE_MAX)))
                 {
-                    (gphNxpNciHal_fw_IoctlCtx.bChipVer) = pRespBuff->pBuff[0];
+                    if (PHDNLDNFC_HWVER_PN553_MRA1_0_UPDATED & pRespBuff->pBuff[0])
+                    {
+                        (gphNxpNciHal_fw_IoctlCtx.bChipVer) = pRespBuff->pBuff[0];
+                    }
                 }
-#endif
 
             }
             else if ((bHwVer >= PHDNLDNFC_HWVER_MRA1_0) && (bHwVer
@@ -633,8 +642,15 @@ static void phNxpNciHal_fw_dnld_get_version_cb(void* pContext,
             {
                 wStatus = NFCSTATUS_SUCCESS;
 #if (PH_LIBNFC_ENABLE_FORCE_DOWNLOAD == 0)
-                NXPLOG_FWDNLD_D("Version Already UpToDate!!\n");
-                (gphNxpNciHal_fw_IoctlCtx.bSkipSeq) = TRUE;
+               NXPLOG_FWDNLD_D("Version Already UpToDate!!\n");
+#if(NXP_NFCC_FORCE_FW_DOWNLOAD == TRUE)
+               if((gphNxpNciHal_fw_IoctlCtx.bForceDnld) == FALSE)
+               {
+                   (gphNxpNciHal_fw_IoctlCtx.bSkipSeq) = TRUE;
+               }
+#else
+               (gphNxpNciHal_fw_IoctlCtx.bSkipSeq) = TRUE;
+#endif
 #else
                 (gphNxpNciHal_fw_IoctlCtx.bForceDnld) = TRUE;
 #endif
@@ -1082,7 +1098,11 @@ static NFCSTATUS phNxpNciHal_fw_dnld_write(void* pContext, NFCSTATUS status,
         NXPLOG_FWDNLD_E("phNxpNciHal_fw_dnld_write cb_data creation failed");
         return NFCSTATUS_FAILED;
     }
+#if(NXP_NFCC_FORCE_FW_DOWNLOAD == TRUE)
+    /* if(FALSE == (gphNxpNciHal_fw_IoctlCtx.bForceDnld)) */
+#else
     if(FALSE == (gphNxpNciHal_fw_IoctlCtx.bForceDnld))
+#endif
     {
         NXPLOG_FWDNLD_D("phNxpNciHal_fw_dnld_write - Incrementing NumDnldTrig..");
         (gphNxpNciHal_fw_IoctlCtx.bDnldInitiated) = TRUE;
@@ -1864,7 +1884,11 @@ static  NFCSTATUS phNxpNciHal_fw_dnld_complete(void* pContext,NFCSTATUS status,
 ** Returns          NFCSTATUS_SUCCESS if success
 **
 *******************************************************************************/
+#if(NXP_NFCC_FORCE_FW_DOWNLOAD == TRUE)
+NFCSTATUS phNxpNciHal_fw_download_seq(uint8_t bClkSrcVal, uint8_t bClkFreqVal, uint8_t force_fwDnld_Req)
+#else
 NFCSTATUS phNxpNciHal_fw_download_seq(uint8_t bClkSrcVal, uint8_t bClkFreqVal)
+#endif
 {
     NFCSTATUS status = NFCSTATUS_FAILED;
     phDnldNfc_Buff_t pInfo;
@@ -1885,6 +1909,13 @@ NFCSTATUS phNxpNciHal_fw_download_seq(uint8_t bClkSrcVal, uint8_t bClkFreqVal)
     (gphNxpNciHal_fw_IoctlCtx.bDnldAttempts) = 0;
     (gphNxpNciHal_fw_IoctlCtx.bClkSrcVal) = bClkSrcVal;
     (gphNxpNciHal_fw_IoctlCtx.bClkFreqVal) = bClkFreqVal;
+
+#if(NXP_NFCC_FORCE_FW_DOWNLOAD == TRUE)
+    if(force_fwDnld_Req)
+    {
+        (gphNxpNciHal_fw_IoctlCtx.bForceDnld) = TRUE;
+    }
+#endif
     /* Get firmware version */
     if (NFCSTATUS_SUCCESS == phDnldNfc_InitImgInfo())
     {
