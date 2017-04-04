@@ -96,8 +96,11 @@ const tNFA_EE_SM_ACT nfa_ee_actions[] =
     nfa_ee_nci_disc_rsp     ,   /* NFA_EE_NCI_DISC_RSP_EVT      */
     nfa_ee_nci_disc_ntf     ,   /* NFA_EE_NCI_DISC_NTF_EVT      */
     nfa_ee_nci_mode_set_rsp ,   /* NFA_EE_NCI_MODE_SET_RSP_EVT  */
-#if (NXP_EXTNS == TRUE) && (NXP_WIRED_MODE_STANDBY == TRUE)
+#if (NXP_EXTNS == TRUE)
+    nfa_ee_nci_set_mode_info,   /* NFA_EE_NCI_MODE_SET_INFO*/
+#if (NXP_WIRED_MODE_STANDBY == TRUE)
     nfa_ee_nci_pwr_link_ctrl_rsp,  /*NFA_EE_NCI_PWR_LNK_CTRL_RSP_EVT*/
+#endif
 #endif
     nfa_ee_nci_conn         ,   /* NFA_EE_NCI_CONN_EVT          */
     nfa_ee_nci_conn         ,   /* NFA_EE_NCI_DATA_EVT          */
@@ -381,10 +384,15 @@ void nfa_ee_proc_evt (tNFC_RESPONSE_EVT event, void *p_data)
         cbk.opcode  = NCI_MSG_RF_SET_ROUTING;
         break;
 
-#if (NXP_EXTNS == TRUE) && (NXP_WIRED_MODE_STANDBY == TRUE)
-    case NFC_NFCEE_PWR_LNK_CTRL_REVT:                /* 6  NFCEE PWR LNK CTRL response */
-        int_event   = NFA_EE_NCI_PWR_LNK_CTRL_RSP_EVT;
+#if (NXP_EXTNS == TRUE)
+    case NFC_NFCEE_MODE_SET_INFO:
+        int_event = NFA_EE_NCI_MODE_SET_INFO;
         break;
+#if (NXP_WIRED_MODE_STANDBY == TRUE)
+    case NFC_NFCEE_PWR_LNK_CTRL_REVT:                /* 6  NFCEE PWR LNK CTRL response */
+        int_event = NFA_EE_NCI_PWR_LNK_CTRL_RSP_EVT;
+        break;
+#endif
 #endif
     }
 
@@ -660,9 +668,13 @@ static char *nfa_ee_sm_evt_2_str (UINT16 event)
         return "NCI_DISC_NTF";
     case NFA_EE_NCI_MODE_SET_RSP_EVT:
         return "NCI_MODE_SET";
-#if (NXP_EXTNS == TRUE) && (NXP_WIRED_MODE_STANDBY == TRUE)
+#if (NXP_EXTNS == TRUE)
+    case NFA_EE_NCI_MODE_SET_INFO:
+        return "NFA_EE_NCI_MODE_SET_INFO";
+#if (NXP_WIRED_MODE_STANDBY == TRUE)
     case NFA_EE_NCI_PWR_LNK_CTRL_RSP_EVT:
         return "NCI_PWR_LNK_CTRL";
+#endif
 #endif
     case NFA_EE_NCI_CONN_EVT:
         return "NCI_CONN";
