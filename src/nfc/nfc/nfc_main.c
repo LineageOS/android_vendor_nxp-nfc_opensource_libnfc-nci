@@ -464,7 +464,7 @@ void nfc_main_handle_hal_evt (tNFC_HAL_EVT_MSG *p_msg)
                      * */
                     if(mGetCfg_info_main == NULL)
                     {
-                        mGetCfg_info_main = (phNxpNci_getCfg_info_t*)malloc(sizeof(phNxpNci_getCfg_info_t));
+                        mGetCfg_info_main = (phNxpNci_getCfg_info_t*)HAL_MALLOC(sizeof(phNxpNci_getCfg_info_t));
                         if(mGetCfg_info_main  != NULL)
                         {
                             memset(mGetCfg_info_main,0x00,sizeof(phNxpNci_getCfg_info_t));
@@ -901,10 +901,13 @@ void NFC_Init (tHAL_NFC_ENTRY *p_hal_entry_tbl)
     nfc_cb.temp_data = NULL;
     nfc_cb.bSetmodeOnReq = FALSE;
     nfc_cb.bIsDwpResPending = FALSE;
-
-    if(p_hal_entry_cntxt->boot_mode == NFC_NORMAL_BOOT_MODE)
-    {
+    nfc_cb.bIssueModeSetCmd = FALSE;
+    nfc_cb.bCeActivatedeSE  = FALSE;
+    nfc_cb.pwr_link_cmd.bPwrLinkCmdRequested = FALSE;
+    nfc_cb.bBlkPwrlinkAndModeSetCmd  = FALSE;
+    if(p_hal_entry_cntxt->boot_mode != NFC_FAST_BOOT_MODE)
 #endif
+    {
         rw_init ();
         ce_init ();
         llcp_init ();
@@ -1021,7 +1024,7 @@ tNFC_STATUS NFC_DiscoveryMap (UINT8 num, tNFC_DISCOVER_MAPS *p_maps,
 #if(NXP_NFCC_FW_WA == TRUE)
                 if ((nfc_cb.vs_interface[yy] == p_maps[xx].intf_type) || (NCI_INTERFACE_ESE_DIRECT == p_maps[xx].intf_type))
 #else
-                if ((nfc_cb.vs_interface[yy] == p_maps[xx].intf_type))
+                if (nfc_cb.vs_interface[yy] == p_maps[xx].intf_type)
 #endif
                     is_supported    = TRUE;
             }
@@ -1050,7 +1053,9 @@ tNFC_STATUS NFC_DiscoveryMap (UINT8 num, tNFC_DISCOVER_MAPS *p_maps,
         else
         {
             NFC_TRACE_WARNING1 ("NFC_DiscoveryMap interface=0x%x is not supported by NFCC", p_maps[xx].intf_type);
+#if(NFC_NXP_CHIP_TYPE != PN547C2)
             return NFC_STATUS_FAILED;
+#endif
         }
     }
 

@@ -469,7 +469,7 @@ tLLCP_STATUS llcp_sdp_proc_snl (UINT16 sdu_length, UINT8 *p)
                  * send any PDU except SYMM PDU*/
                 if((appl_dta_mode_flag == 1) && (sap == 0x00)){
                     LLCP_TRACE_DEBUG1 ("llcp_sdp_proc_snl () In dta mode sap == 0x00 p_value = %s", p_value);
-                    if((length-1) == strlen(p_value)){
+                    if((length-1) == strlen((const char*)p_value)){
                         LLCP_TRACE_DEBUG0 ("DEBUG> llcp_sdp_proc_snl () Strings are not equal");
                         llcp_sdp_send_sdres (tid, sap);
                     }
@@ -484,7 +484,7 @@ tLLCP_STATUS llcp_sdp_proc_snl (UINT16 sdu_length, UINT8 *p)
             {
 #if(NXP_EXTNS == TRUE)
                 /*For P2P in LLCP mode TC_CTO_TAR_BI_03_x(x=3) fix*/
-                if ((appl_dta_mode_flag == 1) && (nfa_dm_cb.eDtaMode == NFA_DTA_LLCP_MODE))
+                if ((appl_dta_mode_flag == 1) && ((nfa_dm_cb.eDtaMode & 0x0F) == NFA_DTA_LLCP_MODE))
                 {
                     LLCP_TRACE_ERROR0 (" llcp_sdp_proc_snl () Calling llcp_sdp_send_sdres");
                     tid = 0x01;

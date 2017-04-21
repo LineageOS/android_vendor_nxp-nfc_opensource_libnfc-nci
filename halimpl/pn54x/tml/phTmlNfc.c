@@ -478,12 +478,12 @@ static void phTmlNfc_TmlThread(void *pParam)
                     tMsg.eMsgType = PH_LIBNFC_DEFERREDCALL_MSG;
                     tMsg.pMsgData = &tDeferredInfo;
                     tMsg.Size = sizeof(tDeferredInfo);
-                    NXPLOG_TML_D("PN54X - Posting read message.....\n");
-                    if((gpphTmlNfc_Context->gWriterCbflag == FALSE) &&
-                           ((gpphTmlNfc_Context->tReadInfo.pBuffer[0] & 0x60) != 0x60))
+                    /*Don't wait for posting notifications. Only wait for posting responses*/
+                    if((gpphTmlNfc_Context->gWriterCbflag == FALSE) && ((gpphTmlNfc_Context->tReadInfo.pBuffer[0] & 0x60) != 0x60))
                     {
                         phTmlNfc_WaitWriteComplete();
                     }
+                    NXPLOG_TML_D("PN54X - Posting read message.....\n");
                     phNxpNciHal_print_packet("RECV", gpphTmlNfc_Context->tReadInfo.pBuffer,
                                                      gpphTmlNfc_Context->tReadInfo.wLength);
                     phTmlNfc_DeferredCall(gpphTmlNfc_Context->dwCallbackThreadId, &tMsg);
@@ -1024,16 +1024,16 @@ NFCSTATUS phTmlNfc_IoCtl(phTmlNfc_ControlCode_t eControlCode)
                     break;
                 }
 #if(NFC_NXP_ESE == TRUE)
-            case phTmlNfc_e_SetJcopDwnldEnable:
-                {
-                    wStatus = phTmlNfc_i2c_set_Jcop_dwnld_state(gpphTmlNfc_Context->pDevHandle, 2);
-                    break;
-                }
-            case phTmlNfc_e_SetJcopDwnldDisable:
-                {
-                    wStatus = phTmlNfc_i2c_set_Jcop_dwnld_state(gpphTmlNfc_Context->pDevHandle, 4);
-                    break;
-                }
+           case phTmlNfc_e_SetJcopDwnldEnable:
+           {
+               wStatus = phTmlNfc_i2c_set_Jcop_dwnld_state(gpphTmlNfc_Context->pDevHandle, JCP_DWNLD_START);
+               break;
+           }
+           case phTmlNfc_e_SetJcopDwnldDisable:
+           {
+                wStatus = phTmlNfc_i2c_set_Jcop_dwnld_state(gpphTmlNfc_Context->pDevHandle, JCP_DWP_DWNLD_COMPLETE);
+                break;
+           }
             case phTmlNfc_e_SetNfcServicePid:
             {
                 wStatus = phTmlNfc_set_pid(gpphTmlNfc_Context->pDevHandle, nfc_service_pid);
