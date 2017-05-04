@@ -93,8 +93,8 @@
 #define NXP_EN_PN553                    1
 #define NXP_EN_PN80T                    1
 #define NXP_ANDROID_VER                 (7U) /* NXP android version */
-#define NFC_NXP_MW_VERSION_MAJ          (3U) /* MW Major Version */
-#define NFC_NXP_MW_VERSION_MIN          (0U) /* MW Minor Version */
+#define NFC_NXP_MW_VERSION_MAJ          (4U) /* MW Major Version */
+#define NFC_NXP_MW_VERSION_MIN          (8U) /* MW Minor Version */
 #endif
 /* 0xE0 ~0xFF are proprietary status codes */
 #define NFC_STATUS_CMD_STARTED          0xE3/* Command started successfully                     */
@@ -128,17 +128,23 @@ typedef UINT8 tNFC_STATUS;
 #define ESE_HOST                        ((unsigned char)0xC0)
 #define NXP_FEATURE_ENABLED             ((unsigned char)0x01)    /* flag to indicate NXP feature is enabled*/
 #define NXP_FEATURE_DISABLED            ((unsigned char)0x00)    /* flag to indicate NXP feature is enabled*/
+#define NXP_NFC_PARAM_SWP_SESSIONID_INT2 ((unsigned char)0xEB)
+#define NXP_NFC_PARAM_SWP_SESSION_ID_LEN 8
+#define NXP_NFC_PROP_MAX_CMD_BUF_SIZE   ((unsigned char)0x40)
+#define NXP_NFC_SET_MSB(x)              (x |= 0x80)
+#define NXP_NFC_RESET_MSB(x)            (x &= 0x7F)
  /**********************************************
   * NFC Config Parameter IDs defined by NXP NFC
   **********************************************/
 #define NXP_NFC_SET_CONFIG_PARAM_EXT        ((unsigned char)0xA0)   /* NXP NFC set config extension ID*/
-#define NXP_NFC_PARAM_ID_SWP1               ((unsigned char)0xEC)   /*SWP1 parameter ID  UICC*/
-#define NXP_NFC_PARAM_ID_SWP2               ((unsigned char)0xED)   /*SWP1 parameter ID  ESE */
-#define NXP_NFC_PARAM_ID_SWP1A              ((unsigned char)0xD4)   /*SWP1 parameter ID  UICC2 */
-#define NXP_NFC_PARAM_ID_NDEF_NFCEE         ((unsigned char)0x95)   /*SWP1 parameter ID  NDEF NFCEE */
+#define NXP_NFC_PARAM_ID_SWP1               ((unsigned char)0xEC)   /* SWP1 parameter ID  UICC*/
+#define NXP_NFC_PARAM_ID_SWP2               ((unsigned char)0xED)   /* SWP1 parameter ID  ESE */
+#define NXP_NFC_PARAM_ID_SWP1A              ((unsigned char)0xD4)   /* SWP1 parameter ID  UICC2 */
+#define NXP_NFC_PARAM_ID_NDEF_NFCEE         ((unsigned char)0x95)   /* SWP1 parameter ID  NDEF NFCEE */
 #define NXP_NFC_PARAM_ID_RF_PARAM_UICC      ((unsigned char)0xEF)   /* UICC CE RF parameter  */
 #define NXP_NFC_PARAM_ID_RF_PARAM_ESE       ((unsigned char)0xF0)   /* ESE RF parameter   */
 #define NXP_NFC_PARAM_ID_NFCC_RF_CONFIG     ((unsigned char)0x9B)   /* NFCC RF config parameter*/
+#define NXP_NFC_EMVCO_PCD_COLLISION_DETECTED ((unsigned char)0xE4)  /* Core generic error for EMVCO collision detected */
 #define NXP_NFC_PARAM_ID_RF_PARAM_UICC2     ((unsigned char)0xE8)   /* UICC2 CE RF parameter  */
 #define NXP_NFC_PARAM_SWP_SESSIONID_INT2    ((unsigned char)0xEB)   /* param for retrieveing HCI session ID for ESE */
 #define NXP_NFC_PARAM_SWP_SESSIONID_INT1    ((unsigned char)0xEA)   /* param for retrieveing HCI session ID for UICC */
@@ -231,12 +237,13 @@ typedef tNCI_DISCOVER_PARAMS tNFC_DISCOVER_PARAMS;
 #define NFC_FIRST_REVT      0x5000
 #define NFC_FIRST_CEVT      0x6000
 #define NFC_FIRST_TEVT      0x8000
-#if (NXP_EXTNS == TRUE)
+#if ((NXP_EXTNS == TRUE) && (NXP_ESE_DUAL_MODE_PRIO_SCHEME == NXP_ESE_WIRED_MODE_RESUME))
 void nfc_ncif_onWiredModeHold_timeout();
 void nfc_ncif_allow_dwp_transmission();
 void nfc_ncif_modeSet_Ntf_timeout();
 void nfc_ncif_modeSet_rsp_timeout();
 void nfc_ncif_resume_dwp_wired_mode();
+void nfc_ncif_pwr_link_rsp_timeout();
 #endif
 /* the events reported on tNFC_RESPONSE_CBACK */
 enum
@@ -337,8 +344,11 @@ typedef struct
 }tNFC_NFCEE_MODE_SET_INFO;
 
 #if (NXP_ESE_JCOP_DWNLD_PROTECTION == TRUE)
+#define ESE_STATE_JCOP_DWNLD            0x8000 /* Depicts the state of Jcop download to be matched with P61_STATE_JCP_DWNLD
+                                                  under p61_access_state_t inside pn553.h(NFCC driver header) */
+
 typedef enum jcop_dwnld_state{
-    JCP_DWNLD_IDLE,                         /* jcop dwnld is not ongoing*/
+    JCP_DWNLD_IDLE = ESE_STATE_JCOP_DWNLD,  /* jcop dwnld is not ongoing*/
     JCP_DWNLD_INIT,                         /* jcop dwonload init state*/
     JCP_DWNLD_START,                        /* download started */
     JCP_SPI_DWNLD_COMPLETE,                 /* jcop download complete in spi interface*/
