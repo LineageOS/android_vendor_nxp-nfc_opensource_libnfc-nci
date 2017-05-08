@@ -374,15 +374,18 @@ static void nfa_dm_nfc_response_cback (tNFC_RESPONSE_EVT event, tNFC_RESPONSE *p
     case NFC_NFCEE_INFO_REVT:                    /* NFCEE Discover Notification */
     case NFC_EE_ACTION_REVT:                     /* EE Action notification */
     case NFC_NFCEE_MODE_SET_REVT:                /* NFCEE Mode Set response */
-#if (NXP_EXTNS == TRUE) && (NXP_WIRED_MODE_STANDBY == TRUE)
+#if (NXP_EXTNS == TRUE)
+    case NFC_NFCEE_MODE_SET_INFO:
+#if (NXP_WIRED_MODE_STANDBY == TRUE)
     case NFC_NFCEE_PWR_LNK_CTRL_REVT:
+#endif
 #endif
     case NFC_SET_ROUTING_REVT:                   /* Configure Routing response */
         nfa_ee_proc_evt (event, p_data);
         break;
 
     case NFC_EE_DISCOVER_REQ_REVT:               /* EE Discover Req notification */
-#if((NFC_NXP_ESE == TRUE) && (NXP_EXTNS == TRUE) && (NXP_ESE_ETSI_READER_ENABLE != TRUE))
+#if((NFC_NXP_ESE == TRUE) && (NXP_EXTNS == TRUE) && (NXP_ESE_ETSI_READER_ENABLE != TRUE) && (NXP_ESE_DWP_SPI_SYNC_ENABLE !=TRUE))
        if (nfa_dm_is_active() &&
            (nfa_dm_cb.disc_cb.disc_state == NFA_DM_RFST_DISCOVERY) )
        {
