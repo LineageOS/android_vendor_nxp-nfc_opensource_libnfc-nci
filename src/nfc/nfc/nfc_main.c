@@ -802,7 +802,7 @@ tNFC_STATUS NFC_Enable (tNFC_RESPONSE_CBACK *p_cback)
     nfc_set_state (NFC_STATE_W4_HAL_OPEN);
 #if(NXP_EXTNS == TRUE)
     UINT16 boot_mode = nfc_cb.boot_mode;
-    if(nfc_cb.boot_mode == NFC_FAST_BOOT_MODE)
+    if(nfc_cb.boot_mode != NFC_NORMAL_BOOT_MODE)
     {
         nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_SET_BOOT_MODE,(void*)&boot_mode);
     }
@@ -846,7 +846,7 @@ void NFC_Disable (void)
     /* Close transport and clean up */
     nfc_task_shutdown_nfcc ();
 #if(NXP_EXTNS == TRUE)
-    if(nfc_cb.boot_mode == NFC_FAST_BOOT_MODE)
+    if(nfc_cb.boot_mode != NFC_NORMAL_BOOT_MODE)
     {
         nfc_cb.p_hal->ioctl(HAL_NFC_IOCTL_SET_BOOT_MODE,(void*)&boot_mode);
     }
@@ -899,6 +899,9 @@ void NFC_Init (tHAL_NFC_ENTRY *p_hal_entry_tbl)
     nfc_cb.bRetransmitDwpPacket = FALSE;
     nfc_cb.bIsCreditNtfRcvd = FALSE;
     nfc_cb.temp_data = NULL;
+    nfc_cb.bSetmodeOnReq = FALSE;
+    nfc_cb.bIsDwpResPending = FALSE;
+
     if(p_hal_entry_cntxt->boot_mode == NFC_NORMAL_BOOT_MODE)
     {
 #endif
@@ -1325,7 +1328,27 @@ tNFC_STATUS NFC_FlushData (UINT8       conn_id)
 
     return status;
 }
-
+#if (NXP_EXTNS == TRUE)
+/*******************************************************************************
+**
+** Function         NFC_Queue_Is_empty
+**
+** Description      This function to get NFCEE connection ID queue information
+**
+** Returns          1 if Queue is empty else 0
+**
+*******************************************************************************/
+BOOLEAN NFC_Queue_Is_empty (UINT8       conn_id)
+{
+    tNFC_CONN_CB    *p_cb = nfc_find_conn_cb_by_conn_id (conn_id);
+    if(p_cb)
+    {
+        return (GKI_queue_is_empty(&p_cb->tx_q));
+    }
+    else
+        return FALSE;
+}
+#endif
 /*******************************************************************************
 **
 ** Function         NFC_Deactivate
@@ -1644,7 +1667,7 @@ INT32 NFC_EnableWired (void *pdata)
 *******************************************************************************/
 tNFC_STATUS NFC_Nfcee_PwrLinkCtrl(UINT8 nfcee_id, UINT8 cfg_value)
 {
-     return nci_snd_pwr_nd_lnk_ctrl_cmd(nfcee_id, cfg_value);
+    return nci_snd_pwr_nd_lnk_ctrl_cmd(nfcee_id, cfg_value);
 }
 #endif
 #if (NXP_ESE_JCOP_DWNLD_PROTECTION == TRUE)
