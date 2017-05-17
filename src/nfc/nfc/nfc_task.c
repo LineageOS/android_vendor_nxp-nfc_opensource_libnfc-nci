@@ -150,9 +150,9 @@ void nfc_process_timer_evt (void)
         case NFC_TTYPE_WAIT_2_DEACTIVATE:
             nfc_wait_2_deactivate_timeout ();
             break;
+#if(NXP_EXTNS == TRUE)
         case NFC_TTYPE_NCI_WAIT_DATA_NTF:
         {
-#if(NXP_EXTNS == TRUE)
             if( get_i2c_fragmentation_enabled () == I2C_FRAGMENATATION_ENABLED)
             {
                 nfc_cb.i2c_data_t.nci_cmd_channel_busy = 0;
@@ -161,23 +161,18 @@ void nfc_process_timer_evt (void)
             nfc_ncif_credit_ntf_timeout();
             break;
         }
+#if(NXP_ESE_DUAL_MODE_PRIO_SCHEME == NXP_ESE_WIRED_MODE_RESUME)
         case NFC_TYPE_NCI_WAIT_SETMODE_NTF:
         {
             nfc_ncif_modeSet_Ntf_timeout();
             break;
         }
-        case NFC_TYPE_NCI_WAIT_SETMODE_RSP:
-        {
-            nfc_ncif_modeSet_rsp_timeout();
-            break;
-        }
-#if(NXP_ESE_DUAL_MODE_PRIO_SCHEME == NXP_ESE_WIRED_MODE_RESUME)
         case NFC_TTYPE_NCI_WAIT_RF_FIELD_NTF:
-#endif
         {
             nfc_ncif_onWiredModeHold_timeout();
             break;
         }
+#endif
         case NFC_TTYPE_LISTEN_ACTIVATION:
             {
                 extern uint8_t sListenActivated;
@@ -345,6 +340,14 @@ void nfc_process_quick_timer_evt (void)
 #if (NFC_RW_ONLY == FALSE)
         case NFC_TTYPE_CE_T4T_UPDATE:
             ce_t4t_process_timeout (p_tle);
+            break;
+#endif
+#if ((NXP_EXTNS == TRUE) && (NXP_ESE_DUAL_MODE_PRIO_SCHEME == NXP_ESE_WIRED_MODE_RESUME))
+        case NFC_TTYPE_PWR_LINK_RSP:
+            nfc_ncif_pwr_link_rsp_timeout();
+            break;
+        case NFC_TTYPE_SET_MODE_RSP:
+            nfc_ncif_modeSet_rsp_timeout();
             break;
 #endif
         default:

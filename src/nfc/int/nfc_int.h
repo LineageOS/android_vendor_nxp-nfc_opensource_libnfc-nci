@@ -97,6 +97,12 @@ extern "C" {
 #define NFC_TTYPE_P2P_PRIO_LOGIC_DEACT_NTF_TIMEOUT 113
 #endif
 #define NFC_TTYPE_VS_BASE                   200
+#if((NXP_EXTNS == TRUE) && (NXP_ESE_DUAL_MODE_PRIO_SCHEME == NXP_ESE_WIRED_MODE_RESUME))
+#define NFC_TTYPE_PWR_LINK_RSP              201   /* Added for sending fave pwr link response to JNI since pwrlink cmd has been
+                                                     ignored due to RF CE session */
+#define NFC_TTYPE_SET_MODE_RSP              202
+#endif
+
 
 
 /* NFC Task event messages */
@@ -203,6 +209,11 @@ typedef void (tNFC_PWR_ST_CBACK) (void);
 #if(NXP_EXTNS == TRUE)
 #define NFC_WAIT_RSP_NXP            0x02
 #endif
+typedef struct
+{
+    BOOLEAN          bPwrLinkCmdRequested;
+    UINT16           param;
+} tNFC_PWRLINK_CMD;
 
 typedef struct
 {
@@ -283,9 +294,15 @@ typedef struct
     BOOLEAN             bRetransmitDwpPacket;
     BOOLEAN             bIsCreditNtfRcvd;
     BOOLEAN             bSetmodeOnReq;
+    BOOLEAN             bCeActivatedeSE;
+    tNFC_PWRLINK_CMD    pwr_link_cmd;
     TIMER_LIST_ENT      rf_filed_event_timeout_timer;
     TIMER_LIST_ENT      nci_wait_setMode_Ntf_timer;
+    TIMER_LIST_ENT      nci_wait_pwrLinkRsp_timer;
+    TIMER_LIST_ENT      nci_wait_setModeRsp_timer;
     BOOLEAN             bIsDwpResPending;
+    BOOLEAN             bIssueModeSetCmd;
+    BOOLEAN             bBlkPwrlinkAndModeSetCmd;
     BT_HDR              *temp_data;
 #endif
 } tNFC_CB;
@@ -370,9 +387,7 @@ NFC_API extern tNFC_STATUS nfc_ncif_store_FWVersion(UINT8 * p_buf);
 #if((NFC_NXP_CHIP_TYPE != PN547C2) && (NFC_NXP_AID_MAX_SIZE_DYN == TRUE))
 NFC_API extern tNFC_STATUS nfc_ncif_set_MaxRoutingTableSize(UINT8 * p_buf);
 #endif
-
 NFC_API extern void nfc_ncif_update_window (void);
-
 NFC_API extern void nfc_ncif_empty_cmd_queue ();
 NFC_API extern BOOLEAN nfc_ncif_proc_proprietary_rsp (UINT8 mt, UINT8 gid, UINT8 oid);
 NFC_API extern void nfc_ncif_proc_rf_wtx_ntf (UINT8 *p, UINT16 plen);

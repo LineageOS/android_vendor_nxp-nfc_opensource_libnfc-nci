@@ -37,6 +37,10 @@
 #define LINK_ALWAYS_ON        02
 #undef P2P_PRIO_LOGIC_HAL_IMP
 
+/*Mem alloc with 8 byte alignment*/
+#define size_align(sz)          ((((sz) - 1) | 7) + 1)
+#define nxp_malloc(size)      malloc(size_align((size)))
+
 typedef struct
 {
     uint16_t cmd_len;
@@ -70,6 +74,7 @@ enum {
     HAL_NFC_IOCTL_SET_JCP_DWNLD_ENABLE,
     HAL_NFC_IOCTL_SET_JCP_DWNLD_DISABLE
 };
+
 
 typedef void (phNxpNciHal_control_granted_callback_t)();
 
@@ -174,6 +179,7 @@ typedef enum {
     EEPROM_ESE_SESSION_ID,
     EEPROM_SWP1_INTF,
     EEPROM_SWP1A_INTF,
+    EEPROM_SWP2_INTF
 }phNxpNci_EEPROM_request_type_t;
 
 typedef struct phNxpNci_EEPROM_info {
