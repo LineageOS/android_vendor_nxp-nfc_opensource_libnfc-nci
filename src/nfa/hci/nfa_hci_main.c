@@ -42,7 +42,8 @@
 
 #if (NXP_EXTNS == TRUE)
 #ifndef __CONFIG_H
-#include<config.h>
+#include <config.h>
+#include <stdlib.h>
 #endif
 #endif
 /*****************************************************************************
@@ -74,6 +75,8 @@ static void nfa_hci_set_receive_buf (UINT8 pipe);
 void nfa_hci_rsp_timeout (tNFA_HCI_EVENT_DATA *p_evt_data);
 static void nfa_hci_assemble_msg (UINT8 *p_data, UINT16 data_len, UINT8 pipe);
 static UINT8 nfa_ee_ce_p61_completed = 0x00;
+static void nfa_hci_reset_session_rsp_cb(UINT8 event, UINT16 param_len, UINT8 *p_param);
+BOOLEAN nfa_hci_is_valid_ese_cfg(void);
 static void read_config_timeout_param_values();
 #else
 static void nfa_hci_assemble_msg (UINT8 *p_data, UINT16 data_len);
@@ -263,6 +266,9 @@ void nfa_hci_init (void)
 #if (NXP_EXTNS == TRUE)
     nfa_ee_ce_p61_completed = 0;
     nfa_hci_cb.bIsHciResponseTimedout = FALSE;
+    nfa_hci_cb.IsHciTimerChanged = FALSE;
+    nfa_hci_cb.IsWiredSessionAborted = FALSE;
+    nfa_hci_cb.IsLastEvtAbortFailed = FALSE;
     read_config_timeout_param_values();
 #endif
     /* register message handler on NFA SYS */
@@ -447,7 +453,7 @@ BOOLEAN nfa_hci_is_valid_cfg (void)
         }
     }
 #if(NXP_EXTNS == TRUE)
-    if (validated_gate_count != gate_count && xx < NFA_HCI_MAX_PIPE_CB)
+    if (validated_gate_count != gate_count && xx > NFA_HCI_MAX_PIPE_CB)
     {
         NFA_TRACE_EVENT1 ("nfa_hci_is_valid_cfg  Invalid Gate: %u", nfa_hci_cb.cfg.dyn_pipes[xx].local_gate);
         return FALSE;
@@ -643,6 +649,7 @@ void nfa_hci_dh_startup_complete (void)
 #if(NXP_EXTNS == TRUE)
         if (send_host_list)
 #endif
+            /* Received EE DISC REQ Ntf(s) */
             nfa_hciu_send_get_param_cmd (NFA_HCI_ADMIN_PIPE, NFA_HCI_HOST_LIST_INDEX);
     }
 }
@@ -696,7 +703,9 @@ void nfa_hci_startup_complete (tNFA_STATUS status)
     if (status == NFA_STATUS_OK){
         nfa_hci_cb.hci_state = NFA_HCI_STATE_IDLE;
 #if(NXP_EXTNS == TRUE)
+        nfa_hci_handle_nfcee_config_evt(NFA_HCI_GET_NUM_NFCEE_CONFIGURED);
 #if(NFC_NXP_STAT_DUAL_UICC_EXT_SWITCH == TRUE)
+        nfa_hci_cb.hci_state = NFA_HCI_STATE_IDLE;
         NFA_TRACE_EVENT0 ("hci_state = NFA_HCI_STATE_IDLE");
         if((nfa_sys_cb.enable_cplt_flags == nfa_sys_cb.enable_cplt_mask)
             &&(!(nfa_sys_cb.p_enable_cback))
@@ -706,7 +715,6 @@ void nfa_hci_startup_complete (tNFA_STATUS status)
                 (*nfa_dm_cb.p_dm_cback)(NFA_DM_EE_HCI_ENABLE, NULL);
             }
 #endif
-        nfa_hci_handle_nfcee_config_evt(NFA_HCI_GET_NUM_NFCEE_CONFIGURED);
 #endif
     }
     else
@@ -889,6 +897,11 @@ void nfa_hci_conn_cback (UINT8 conn_id, tNFC_CONN_EVT event, tNFC_CONN *p_data)
         {
             nfa_sys_start_timer (&nfa_hci_cb.timer, NFA_HCI_RSP_TIMEOUT_EVT, NFA_HCI_DWP_RSP_WAIT_TIMEOUT);
             nfa_hci_cb.IsHciTimerChanged = FALSE;
+        }
+        else if(nfa_hci_cb.IsWiredSessionAborted)
+        {
+            nfa_sys_start_timer (&nfa_hci_cb.timer, NFA_HCI_RSP_TIMEOUT_EVT, NFA_HCI_DWP_SESSION_ABORT_TIMEOUT);
+            nfa_hci_cb.IsWiredSessionAborted = FALSE;
         }
         else
         {
@@ -1189,7 +1202,22 @@ void nfa_hci_conn_cback (UINT8 conn_id, tNFC_CONN_EVT event, tNFC_CONN *p_data)
         GKI_freebuf (p_pkt);
         return;
     }
+#if (NXP_EXTNS == TRUE)
+    if((pipe == NFA_HCI_APDU_PIPE) && nfa_hci_cb.IsLastEvtAbortFailed)
+    {
+        if(nfa_hci_cb.inst == NFA_HCI_ABORT)
+        {
+            nfa_hci_cb.IsLastEvtAbortFailed = FALSE;
+        }
+        if(nfa_hci_cb.evt_sent.evt_type != NFA_EVT_ABORT)
+        {
+            /*Ignore the response after rsp timeout due to ese/uicc concurrency scenarios*/
+            GKI_freebuf (p_pkt);
+            return;
+        }
+    }
 
+#endif
     /* If we got a response, cancel the response timer. Also, if waiting for */
     /* a single response, we can go back to idle state                       */
     if ( (nfa_hci_cb.hci_state == NFA_HCI_STATE_WAIT_RSP) &&
@@ -1218,12 +1246,14 @@ void nfa_hci_conn_cback (UINT8 conn_id, tNFC_CONN_EVT event, tNFC_CONN *p_data)
         }
         else
         {
-            if(!((pipe == NFA_HCI_CONN_UICC_PIPE ||(pipe == NFA_HCI_CONN_ESE_PIPE)
+            if(!((pipe == NFA_HCI_CONN_UICC_PIPE || pipe == NFA_HCI_CONN_ESE_PIPE
 #if(NFC_NXP_STAT_DUAL_UICC_WO_EXT_SWITCH == TRUE)
-                    ||(pipe == NFA_HCI_CONN_UICC2_PIPE)
+                  || pipe == NFA_HCI_CONN_UICC2_PIPE
 #endif
-            ) && (nfa_hci_cb.inst_evt == NFA_HCI_EVT_TRANSACTION)))
+                 ) && (nfa_hci_cb.inst_evt == NFA_HCI_EVT_TRANSACTION ||
+                      nfa_hci_cb.inst_evt == NFA_HCI_EVT_CONNECTIVITY)))
             {
+                /*Stop timer and goto IDLE state when pipe is not connectivity but event received is connectivity*/
                 nfa_sys_stop_timer (&nfa_hci_cb.timer);
                 nfa_hci_cb.hci_state  = NFA_HCI_STATE_IDLE;
             }
@@ -1317,7 +1347,24 @@ void nfa_hci_handle_nv_read (UINT8 block, tNFA_STATUS status)
             memcpy (session_id, (UINT8 *)&os_tick, (NFA_HCI_SESSION_ID_LEN / 2));
             nfa_hci_restore_default_config (session_id);
         }
-        nfa_hci_startup ();
+#if (NXP_EXTNS == TRUE)
+        else
+        {
+            if(!nfa_hci_is_valid_ese_cfg() && (nfa_hci_cb.cfg.retry_cnt < NFA_HCI_INIT_MAX_RETRY))
+            {
+                nfa_hci_cb.cfg.retry_cnt++;
+                NFA_TRACE_DEBUG0 (" nfa_hci_handle_nv_read; reset ese session");
+                nfa_hciu_reset_session_id(nfa_hci_reset_session_rsp_cb);
+            }
+            else
+            {
+                NXP_NFC_RESET_MSB(nfa_hci_cb.cfg.retry_cnt);
+#endif
+                nfa_hci_startup ();
+#if (NXP_EXTNS == TRUE)
+            }
+        }
+#endif
     }
 }
 
@@ -1450,6 +1497,10 @@ void nfa_hci_rsp_timeout (tNFA_HCI_EVENT_DATA *p_evt_data)
                     evt = 0;
                     break;
                 }
+            }
+            if(nfa_hci_cb.IsEventAbortSent)
+            {
+                nfa_hci_cb.IsLastEvtAbortFailed = TRUE;
             }
             NFC_FlushData(nfa_hci_cb.conn_id);
             nfa_hci_cb.IsEventAbortSent = FALSE;
@@ -1837,6 +1888,88 @@ void nfa_hci_release_transcieve()
 
         nfa_sys_stop_timer(&nfa_hci_cb.timer);
         nfa_hci_rsp_timeout(NULL);
+    }
+}
+
+/*******************************************************************************
+**
+** Function         nfa_hci_is_valid_ese_cfg
+**
+** Description      Validate ESE control block config parameters
+**
++** Returns          TRUE/FALSE
+**
+*******************************************************************************/
+BOOLEAN nfa_hci_is_valid_ese_cfg(void)
+{
+    /* Validate Gate Control block */
+    BOOLEAN isFoundidGate = TRUE;
+    BOOLEAN isFoundEtsi12 = TRUE;
+    UINT8 xx;
+    for (xx = 0; xx < NFA_HCI_MAX_PIPE_CB; xx++)
+    {
+        if(((nfa_hci_cb.cfg.dyn_pipes[xx].dest_host)== 0xC0) && ((nfa_hci_cb.cfg.dyn_pipes[xx].dest_gate)== NFA_HCI_IDENTITY_MANAGEMENT_GATE)
+                                         &&((nfa_hci_cb.cfg.dyn_pipes[xx].local_gate)== NFA_HCI_IDENTITY_MANAGEMENT_GATE))
+        {
+            NFA_TRACE_DEBUG0 ("nfa_hci_is_valid_ese_cfg()  Validate ID Management Gate Pipe Data");
+            NFA_TRACE_DEBUG1 ("nfa_hci_is_valid_ese_cfg()  Pipe id: %u", nfa_hci_cb.cfg.dyn_pipes[xx].pipe_id);
+            NFA_TRACE_DEBUG1 ("nfa_hci_is_valid_ese_cfg()  Pipe state: %u", nfa_hci_cb.cfg.dyn_pipes[xx].pipe_state);
+            if((nfa_hci_cb.cfg.dyn_pipes[xx].pipe_id)!= 0x00)
+            {
+                NFA_TRACE_DEBUG0 ("nfa_hci_is_valid_ese_cfg()  Validate ID Management Gate Pipe State");
+                if((nfa_hci_cb.cfg.dyn_pipes[xx].pipe_state) != NFA_HCI_PIPE_OPENED)
+                {
+                    isFoundidGate = FALSE;
+                }
+            }
+        }
+        if(((nfa_hci_cb.cfg.dyn_pipes[xx].dest_host)== 0xC0) && ((nfa_hci_cb.cfg.dyn_pipes[xx].dest_gate)== NFA_HCI_ETSI12_APDU_GATE)
+                                         &&((nfa_hci_cb.cfg.dyn_pipes[xx].local_gate)== NFA_HCI_ETSI12_APDU_GATE))
+        {
+            NFA_TRACE_DEBUG0 ("nfa_hci_is_valid_ese_cfg()  Validate APDU Gate Pipe Data");
+            NFA_TRACE_DEBUG1 ("nfa_hci_is_valid_ese_cfg()  Pipe id: %u", nfa_hci_cb.cfg.dyn_pipes[xx].pipe_id);
+            NFA_TRACE_DEBUG1 ("nfa_hci_is_valid_ese_cfg()  Pipe state: %u", nfa_hci_cb.cfg.dyn_pipes[xx].pipe_state);
+            if((nfa_hci_cb.cfg.dyn_pipes[xx].pipe_id)!= 0x00)
+            {
+                NFA_TRACE_DEBUG0 ("nfa_hci_is_valid_ese_cfg()  Validate APDU Gate Pipe State");
+                if((nfa_hci_cb.cfg.dyn_pipes[xx].pipe_state) != NFA_HCI_PIPE_OPENED)
+                {
+                    isFoundEtsi12 = FALSE;
+                }
+            }
+        }
+    }
+
+    if(!(isFoundidGate && isFoundEtsi12))
+    {
+        return FALSE;
+    }
+    return TRUE;
+}
+
+/*******************************************************************************
+**
+** Function         nfa_hci_reset_session_rsp_cb
+**
+** Description      Callback function for ESE session ID reset
+**
+** Returns          None
+**
+*******************************************************************************/
+static void nfa_hci_reset_session_rsp_cb(UINT8 event, UINT16 param_len, UINT8 *p_param)
+{
+    (void)event;
+    NFA_TRACE_DEBUG2("nfa_hci_reset_session_rsp_cb: Received length data = 0x%x status = 0x%x", param_len, p_param[3]);
+
+    if(p_param[3] == NFA_STATUS_OK)
+    {
+        NXP_NFC_SET_MSB(nfa_hci_cb.cfg.retry_cnt);
+        nfa_nv_co_write ((UINT8 *)&nfa_hci_cb.cfg, sizeof (nfa_hci_cb.cfg),DH_NV_BLOCK);
+        exit(0);
+    }
+    else
+    {
+        nfa_hci_startup ();
     }
 }
 #endif

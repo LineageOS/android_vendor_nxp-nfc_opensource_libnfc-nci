@@ -279,11 +279,14 @@ tNFA_HCI_DYN_GATE *nfa_hciu_alloc_gate (UINT8 gate_id, tNFA_HANDLE app_handle)
             if (nfa_hciu_find_gate_by_gid (gate_id) == NULL)
                 break;
         }
+#if(NXP_EXTNS == TRUE)
+#else
         if (gate_id > NFA_HCI_LAST_PROP_GATE)
         {
             NFA_TRACE_ERROR2 ("nfa_hci_alloc_gate - no free Gate ID: %u  App Handle: 0x%04x", gate_id, app_handle);
             return (NULL);
         }
+#endif
     }
 
     /* Now look for a free control block */
@@ -349,6 +352,24 @@ tNFA_STATUS nfa_hciu_send_msg (UINT8 pipe_id, UINT8 type, UINT8 instruction, UIN
     {
         nfa_hci_cb.hci_packet_len = msg_len;
         nfa_hci_cb.IsEventAbortSent = FALSE;
+        if(instruction == NFA_EVT_ABORT)
+        {
+            NFA_TRACE_DEBUG0 ("Flush the queue!!!");
+            NFC_FlushData(nfa_hci_cb.conn_id);
+        }
+        else if(nfa_hci_cb.IsLastEvtAbortFailed)
+        {
+            /* send EVT_ABORT command */
+            if((p_buf = (BT_HDR *) GKI_getpoolbuf (NFC_RW_POOL_ID)) != NULL)
+            {
+                p_buf->offset = NCI_MSG_OFFSET_SIZE + NCI_DATA_HDR_SIZE;
+                p_data = (UINT8 *) (p_buf + 1) + p_buf->offset;
+                *p_data++ = (NFA_HCI_NO_MESSAGE_FRAGMENTATION << 7) | (nfa_hci_cb.pipe_in_use & 0x7F);
+                *p_data++ =  (NFA_HCI_EVENT_TYPE << 6) | NFA_EVT_ABORT;
+                p_buf->len = 2;
+                NFC_SendData(nfa_hci_cb.conn_id, p_buf);
+            }
+        }
     }
 #endif
 
@@ -426,7 +447,7 @@ tNFA_STATUS nfa_hciu_send_msg (UINT8 pipe_id, UINT8 type, UINT8 instruction, UIN
 #if (NXP_EXTNS == TRUE)
     else if (type == NFA_HCI_EVENT_TYPE)
     {
-        nfa_hci_cb.evt_sent.evt_type = instruction;
+            nfa_hci_cb.evt_sent.evt_type = instruction;
     }
 #endif
     return status;
@@ -1337,6 +1358,50 @@ BOOLEAN nfa_hciu_check_any_host_reset_pending()
                 break;
             }
         }
+    }
+    return status;
+}
+
+/*******************************************************************************
+**
+** Function         nfa_hciu_reset_session_id
+**
++** Description      reset ESE session ID to FF
+**
+** Returns          tNFA_STATUS
+**
+*******************************************************************************/
+tNFA_STATUS nfa_hciu_reset_session_id(tNFA_VSC_CBACK *p_cback)
+{
+    tNFA_STATUS status = NFA_STATUS_FAILED;
+    UINT8 *pp, *p_start;
+    UINT8 cmd_len = 0;
+    tNFA_DM_API_SEND_VSC  *p_data;
+    BT_HDR  *p_cmd;
+    UINT8 id_buf[] = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
+    NFA_TRACE_DEBUG1("%s: enter", __FUNCTION__);
+
+    p_data = (tNFA_DM_API_SEND_VSC *) GKI_getbuf (sizeof(tNFA_DM_API_SEND_VSC)+ NXP_NFC_PROP_MAX_CMD_BUF_SIZE);
+    if(p_data != NULL)
+    {
+        p_cmd = (BT_HDR *)p_data;
+        p_cmd->offset   = sizeof (tNFA_DM_API_SEND_VSC) - BT_HDR_SIZE;
+        pp = (UINT8 *)(p_cmd + 1) + p_cmd->offset;
+        NCI_MSG_BLD_HDR0 (pp, NCI_MT_CMD, NCI_GID_CORE);
+        NCI_MSG_BLD_HDR1 (pp, NCI_MSG_CORE_SET_CONFIG);
+        p_start = pp;
+        pp++;
+        UINT8_TO_STREAM (pp, 0x01);
+        UINT8_TO_STREAM (pp, NXP_NFC_SET_CONFIG_PARAM_EXT);
+        UINT8_TO_STREAM (pp, NXP_NFC_PARAM_SWP_SESSIONID_INT2);
+        UINT8_TO_STREAM (pp, NXP_NFC_PARAM_SWP_SESSION_ID_LEN);
+        memcpy(pp, id_buf, NXP_NFC_PARAM_SWP_SESSION_ID_LEN);
+        pp = pp + NXP_NFC_PARAM_SWP_SESSION_ID_LEN;
+        cmd_len = (pp - p_start)-1; /*skip len byte filed*/
+        pp = p_start;
+        UINT8_TO_STREAM (pp, cmd_len);
+        p_cmd->len      = cmd_len + NCI_DATA_HDR_SIZE;
+        status = NFC_SendNxpNciCommand (p_cmd, p_cback);
     }
     return status;
 }
