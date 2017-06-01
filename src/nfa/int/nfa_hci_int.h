@@ -83,7 +83,8 @@ BOOLEAN MW_RCVRY_FW_DNLD_ALLOWED;
 #define NFA_HCI_MAX_RSP_WAIT_TIME               0x0C
 #define NFA_HCI_CHAIN_PKT_RSP_TIMEOUT           30000    /* After the reception of WTX, maximum response timeout value is 30 sec */
 #define NFA_HCI_WTX_RESP_TIMEOUT                3000     /* Wait time to give response timeout to application if WTX not received*/
-#define NFA_HCI_DWP_RSP_WAIT_TIMEOUT            2000   /* time out for wired mode response after RF deativation */
+#define NFA_HCI_DWP_RSP_WAIT_TIMEOUT            2000     /* time out for wired mode response after RF deativation */
+#define NFA_HCI_DWP_SESSION_ABORT_TIMEOUT       5000     /* time out for wired session aborted(0xE6 ntf) due to SWP switched to UICC*/
 #define NFA_HCI_SESSION_ID_POLL_DELAY           50       /* delay between session ID poll to check if the reset host is initilized or not */
 #define NFA_HCI_MAX_SESSION_ID_RETRY_CNT        0x0A     /* retry count for session ID poll*/
 #define NFA_HCI_NFCEE_DISC_TIMEOUT              0x02     /* NFCEE disc timeout default value in sec*/
@@ -432,6 +433,7 @@ typedef struct
 #define NFA_HCI_CONN_ESE_PIPE       0x16
 #define NFA_HCI_APDU_PIPE           0x19
 #define NFA_HCI_CONN_UICC2_PIPE     0x23                /*Connectivity pipe no of UICC2*/
+#define NFA_HCI_INIT_MAX_RETRY      20
 #endif
 /* NFA HCI control block */
 typedef struct
@@ -482,11 +484,13 @@ typedef struct
     UINT8                           host_controller_version;                 /* no of host controller version */
     UINT8                           current_nfcee;                      /* current Nfcee under execution  */
     BOOLEAN                         IsHciTimerChanged;
+    BOOLEAN                         IsWiredSessionAborted;
     UINT32                          hciResponseTimeout;
     BOOLEAN                         IsChainedPacket;
     BOOLEAN                         bIsHciResponseTimedout;
     UINT16                          hci_packet_len;
     BOOLEAN                         IsEventAbortSent;
+    BOOLEAN                         IsLastEvtAbortFailed;
     tNFA_HCI_EVENT_SENT             evt_sent;
     struct
     {
@@ -520,6 +524,9 @@ typedef struct
         tNFA_ADMIN_GATE_INFO        admin_gate;
         tNFA_LINK_MGMT_GATE_INFO    link_mgmt_gate;
         tNFA_ID_MGMT_GATE_INFO      id_mgmt_gate;
+#if (NXP_EXTNS == TRUE)
+        UINT8                       retry_cnt;
+#endif
     } cfg;
 
 } tNFA_HCI_CB;
@@ -553,6 +560,7 @@ extern void nfa_hci_restore_default_config (UINT8 *p_session_id);
 #if (NXP_EXTNS == TRUE)
 extern void nfa_hci_release_transcieve();
 extern void nfa_hci_network_enable();
+extern tNFA_STATUS nfa_hciu_reset_session_id(tNFA_VSC_CBACK *p_cback);
 extern tNFA_STATUS nfa_hciu_send_raw_cmd(UINT8 param_len, UINT8* p_data, tNFA_VSC_CBACK   *p_cback);
 extern BOOLEAN nfa_hciu_check_nfcee_poll_done(UINT8 host_id);
 extern BOOLEAN nfa_hciu_check_nfcee_config_done(UINT8 host_id);

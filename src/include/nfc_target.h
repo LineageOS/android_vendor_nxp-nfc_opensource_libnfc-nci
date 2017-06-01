@@ -702,19 +702,6 @@
 #define NFA_SNEP_RW                     2           /* Modified for NFC-A */
 #endif
 
-/* Max number of NFCEE supported */
-#ifndef NFA_EE_MAX_EE_SUPPORTED
-#if(NXP_EXTNS == TRUE)
-#if(NXP_NFCC_DYNAMIC_DUAL_UICC == TRUE)
-#define NFA_EE_MAX_EE_SUPPORTED         4 //Wait for UICC Init complete.
-#else
-#define NFA_EE_MAX_EE_SUPPORTED         3 //Wait for UICC Init complete.
-#endif
-#else
-#define NFA_EE_MAX_EE_SUPPORTED         4           /* Modified for NFC-A until we add dynamic support */
-#endif
-#endif
-
 /* Maximum number of AID entries per target_handle  */
 #ifndef NFA_EE_MAX_AID_ENTRIES
 #if(NXP_EXTNS == TRUE)
@@ -747,6 +734,10 @@
 #ifndef HAL_WRITE
 #define HAL_WRITE(p)    {nfc_cb.p_hal->write(p->len, (UINT8 *)(p+1) + p->offset); GKI_freebuf(p);}
 #if (NXP_EXTNS == TRUE)
+/*Mem alloc with 8 byte alignment*/
+#define size_align(sz)        ((((sz) - 1) | 7) + 1)
+#define HAL_MALLOC(size)      malloc(size_align((size)))
+
 #define HAL_RE_WRITE(p)    {nfc_cb.p_hal->write(p->len, (UINT8 *)(p+1) + p->offset);}
 #endif
 

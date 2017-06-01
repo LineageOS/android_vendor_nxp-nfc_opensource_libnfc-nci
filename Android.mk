@@ -56,6 +56,12 @@ else
 LOCAL_CFLAGS += -DNFC_NXP_ESE=FALSE
 endif
 
+ifeq ($(TARGET_PRODUCT), msm8998)
+D_CFLAGS += -DNQ_NFC_DUAL_UICC=FALSE
+else
+D_CFLAGS += -DNQ_NFC_DUAL_UICC=TRUE
+endif
+
 #### Select the CHIP ####
 ifeq ($(BOARD_NFC_CHIPSET),pn547)
 NXP_CHIP_TYPE := $(PN547C2)

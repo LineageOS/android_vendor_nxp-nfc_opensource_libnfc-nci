@@ -272,7 +272,7 @@ static void rw_t2t_handle_cc_read_rsp (void)
 static void rw_t2t_ntf_tlv_detect_complete (tNFC_STATUS status)
 {
     tRW_T2T_CB              *p_t2t  = &rw_cb.tcb.t2t;
-    tRW_DETECT_NDEF_DATA    ndef_data = {0, };
+    tRW_DETECT_NDEF_DATA    ndef_data = {.status = 0 };
     tRW_DETECT_TLV_DATA     tlv_data;
     tRW_T2T_DETECT          evt_data;
     UINT8                   xx;
@@ -2735,7 +2735,7 @@ tNFC_STATUS rw_t2t_format_tag (void)
     else
         tms = p_ret->tms;
 
-    memset (p_t2t->tag_data, 0, T2T_READ_DATA_LEN);
+    memset (p_t2t->tag_data, 0, sizeof(p_t2t->tag_data));
 
     if (!b_blank_tag || !p_ret->b_multi_version)
     {
