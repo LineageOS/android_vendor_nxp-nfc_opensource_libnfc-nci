@@ -158,6 +158,8 @@ int GetNumValue(const char* name, void* p_value, unsigned long len);
 #endif
 #define NAME_NXP_HCEF_CMD_RSP_TIMEOUT_VALUE "NXP_HCEF_CMD_RSP_TIMEOUT_VALUE"
 #endif
+#define NFC_HAL_TRACE_VERBOSE "TRACE_VERBOSE"
+#define NFC_HAL_INITIAL_TRACE_LEVEL "INITIAL_TRACE_LEVEL"
 
 #define                     LPTD_PARAM_LEN (40)
 
