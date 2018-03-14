@@ -2219,6 +2219,7 @@ void nfc_ncif_proc_reset_rsp (UINT8 *p, BOOLEAN is_ntf)
             {
                 nfc_reset_all_conn_cbs ();
             }
+#if 0
             /*Check NCI version only in case of reset rsp*/
             if (!is_ntf && status == NCI_STATUS_OK)
             {
@@ -2232,6 +2233,7 @@ void nfc_ncif_proc_reset_rsp (UINT8 *p, BOOLEAN is_ntf)
                     }
                 }
             }
+#endif
         #endif
     }
 #else
