@@ -22,6 +22,30 @@
       "revId": "de5aa66eaeda3641eb5d73f5eb002baa39125fb3",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "9415e043_83e3176d",
+        "filename": "src/nfc/nfc/nfc_ncif.c",
+        "patchSetId": 1
+      },
+      "lineNbr": 2205,
+      "author": {
+        "id": 10258
+      },
+      "writtenOn": "2018-03-15T03:44:37Z",
+      "side": 1,
+      "message": "CAF intended to disable it on pn553, in fact they don\u0027t enable it for any nfc chips: https://github.com/LineageOS/android_vendor_nxp-nfc_opensource_libnfc-nci/blob/cm-14.1/halimpl/pn54x/configs/NXP_NFCC_Features.h#L37\nhttps://github.com/LineageOS/android_vendor_nxp-nfc_opensource_libnfc-nci/blob/cm-14.1/src/include/NXP_NFCC_Features.h#L37",
+      "parentUuid": "4ffb99ae_1568d3ed",
+      "range": {
+        "startLine": 2205,
+        "startChar": 12,
+        "endLine": 2205,
+        "endChar": 38
+      },
+      "revId": "de5aa66eaeda3641eb5d73f5eb002baa39125fb3",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
