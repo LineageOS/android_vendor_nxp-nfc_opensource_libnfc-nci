@@ -1,0 +1,27 @@
+{
+  "comments": [
+    {
+      "key": {
+        "uuid": "53ac6fb5_09b40f14",
+        "filename": "halimpl/pn54x/Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 2936
+      },
+      "writtenOn": "2018-03-18T19:25:59Z",
+      "side": 1,
+      "message": "Shouldn\u0027t it be an explicit check for pm553, and default to pn551 like the previous logic?",
+      "range": {
+        "startLine": 57,
+        "startChar": 32,
+        "endLine": 57,
+        "endChar": 37
+      },
+      "revId": "c280e68a6476c6275b58082327f42731a9ba27bc",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
+    }
+  ]
+}
