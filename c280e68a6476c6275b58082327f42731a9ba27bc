@@ -22,6 +22,30 @@
       "revId": "c280e68a6476c6275b58082327f42731a9ba27bc",
       "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
       "unresolved": false
+    },
+    {
+      "key": {
+        "uuid": "e86172b2_36b8948d",
+        "filename": "halimpl/pn54x/Android.mk",
+        "patchSetId": 1
+      },
+      "lineNbr": 57,
+      "author": {
+        "id": 10258
+      },
+      "writtenOn": "2018-03-19T02:22:49Z",
+      "side": 1,
+      "message": "I found no official 14.1 pn551 devices using this hal(natrium and lithium uses AOSP hal), so sort them alphabetically makes more sense.",
+      "parentUuid": "53ac6fb5_09b40f14",
+      "range": {
+        "startLine": 57,
+        "startChar": 32,
+        "endLine": 57,
+        "endChar": 37
+      },
+      "revId": "c280e68a6476c6275b58082327f42731a9ba27bc",
+      "serverId": "1ec6b3db-b2c1-4fa4-84a2-4c7efe89ba71",
+      "unresolved": false
     }
   ]
 }
